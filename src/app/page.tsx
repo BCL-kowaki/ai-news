@@ -1,13 +1,14 @@
-import { CATEGORIES, MANUAL_NOTIFY_COUNT } from "@/lib/config";
+import Link from "next/link";
+import { CATEGORIES } from "@/lib/config";
 import { getMonthKey } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
-import { GenreButtons } from "./GenreButtons";
 
 /**
  * 稼働状況ページ（自分用のダッシュボード）
  *
  * - 記事の収集・配信が回っているかの確認
- * - ジャンルボタンから、そのジャンルの最新記事を手動でSlackに送る
+ * - 「登録ソース」カード → 媒体一覧ページ（/sources）へ
+ * - ジャンルカード → そのジャンルの記事一覧ページ（/genre/[ジャンル]）へ
  */
 
 export const dynamic = "force-dynamic"; // 毎回DBを見て最新の数字を出す
@@ -28,7 +29,13 @@ export default async function Page() {
             <Stat label="未送信の記事" value={`${stats.pending} 件`} />
             <Stat label="送信済みの記事" value={`${stats.sent} 件`} />
             <Stat label="今月の配信回数" value={`${stats.monthlyBroadcasts} 回`} />
-            <Stat label="登録ソース" value={`${stats.sources} 件`} />
+            {/* 登録ソースは押すと媒体一覧へ遷移 */}
+            <Stat
+              label="登録ソース"
+              value={`${stats.sources} 件`}
+              href="/sources"
+              hint="媒体一覧を見る →"
+            />
             <Stat
               label="最終配信"
               value={stats.lastSentAt ? formatJst(stats.lastSentAt) : "まだなし"}
@@ -37,12 +44,23 @@ export default async function Page() {
           </dl>
 
           <section className="mt-10">
-            <h2 className="text-lg font-semibold">ジャンル別に今すぐ通知</h2>
+            <h2 className="text-lg font-semibold">ジャンル別の記事一覧</h2>
             <p className="mt-1 text-xs text-slate-500">
-              押すと、そのジャンルの最新{MANUAL_NOTIFY_COUNT}件をSlackに送ります（無料・何回でも）。
+              カードを押すと、そのジャンルの記事一覧を表示します（そこからSlackにも送れます）。
             </p>
-            <div className="mt-4">
-              <GenreButtons genres={stats.genres} />
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {stats.genres.map((genre) => (
+                <Link
+                  key={genre.name}
+                  href={`/genre/${encodeURIComponent(genre.name)}`}
+                  className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-400"
+                >
+                  <span className="text-base font-semibold">
+                    {genre.emoji} {genre.name}
+                  </span>
+                  <span className="mt-1 text-xs text-slate-500">{genre.count} 件</span>
+                </Link>
+              ))}
             </div>
           </section>
 
@@ -59,13 +77,37 @@ export default async function Page() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+/** 統計カード。href を渡すとリンク（クリックで遷移）になる。 */
+function Stat({
+  label,
+  value,
+  href,
+  hint,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+  hint?: string;
+}) {
+  const body = (
+    <>
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd className="mt-1 text-lg font-semibold">{value}</dd>
-    </div>
+      {hint && <span className="mt-1 block text-xs text-blue-600">{hint}</span>}
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-400"
+      >
+        {body}
+      </Link>
+    );
+  }
+  return <div className="rounded-lg border border-slate-200 bg-white p-4">{body}</div>;
 }
 
 function formatJst(date: Date): string {
@@ -87,7 +129,6 @@ async function loadStats() {
       prisma.source.count({ where: { active: true } }),
       prisma.sendLog.count({ where: { monthKey } }),
       prisma.sendLog.findFirst({ orderBy: { sentAt: "desc" } }),
-      // ジャンルごとの記事件数（ボタンに表示する）
       Promise.all(
         CATEGORIES.map(async (c) => ({
           name: c.name,
