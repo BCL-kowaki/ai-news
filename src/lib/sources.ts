@@ -150,4 +150,40 @@ export const SOURCE_DEFINITIONS: SourceDefinition[] = [
     active: true,
     maxPerFetch: 5,
   },
+  // 日本語のAI系チャンネル
+  {
+    name: "KEITO【AI&WEB ch】",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCfapRkagDtoQEkGeyD3uERQ",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "チャエン【AI研究所】",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC9buL3Iph_f7AZxdzmiBL8Q",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "いけともch",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCpUQnk6MaY4o3NdgJmv10cw",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "にゃんたのAIチャンネル",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCZQVTC3uLCyuJUOcRlguazA",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "PIVOT 公式チャンネル",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC8yHePe_RgUBE-waRWy6olw",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
 ];
