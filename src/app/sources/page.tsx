@@ -28,46 +28,45 @@ export default async function SourcesPage() {
       {sources === null ? (
         <p className="panel mt-8 p-4 text-sm text-accent">DBに接続できませんでした。</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border-2 border-line bg-panel">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b-2 border-line text-left text-muted">
-                <th className="px-3 py-3 font-bold">媒体</th>
-                <th className="px-3 py-3 font-bold">ジャンル</th>
-                <th className="px-3 py-3 font-bold">記事数</th>
-                <th className="px-3 py-3 font-bold">状態</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sources.map((source) => (
-                <tr key={source.id} className="border-b border-line/25">
-                  <td className="px-3 py-3">
-                    <a
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block min-w-[180px] max-w-[320px] font-bold text-ink underline-offset-2 hover:underline"
-                    >
-                      {source.name}
-                    </a>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-muted">
-                    {source.category ?? "―"}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-muted">
-                    {source.articleCount} 件
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {source.active ? (
-                      <span className="font-bold text-accent">収集中</span>
-                    ) : (
-                      <span className="text-muted">停止</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-6 overflow-hidden rounded-2xl border-2 border-line bg-panel">
+          {/* PC用の見出し行（スマホでは非表示） */}
+          <div className="hidden items-center gap-4 border-b-2 border-line px-4 py-3 text-sm font-bold text-muted sm:flex">
+            <div className="flex-1">媒体</div>
+            <div className="w-28 shrink-0">ジャンル</div>
+            <div className="w-20 shrink-0">記事数</div>
+            <div className="w-20 shrink-0">状態</div>
+          </div>
+          <ul>
+            {sources.map((source) => (
+              <li
+                key={source.id}
+                className="border-b border-line/25 px-4 py-3 last:border-b-0"
+              >
+                {/* スマホ: 縦積み / PC: 横並び */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 font-bold text-ink underline-offset-2 hover:underline"
+                  >
+                    {source.name}
+                  </a>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted sm:contents sm:text-sm">
+                    <span className="sm:w-28 sm:shrink-0">{source.category ?? "―"}</span>
+                    <span className="sm:w-20 sm:shrink-0">{source.articleCount} 件</span>
+                    <span className="sm:w-20 sm:shrink-0">
+                      {source.active ? (
+                        <span className="font-bold text-accent">収集中</span>
+                      ) : (
+                        <span className="text-muted">停止</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </main>

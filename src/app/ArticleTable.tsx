@@ -4,14 +4,13 @@ import { useState, useTransition } from "react";
 import { summarizeArticle, translateArticle } from "./actions";
 
 /**
- * ジャンル別の記事一覧テーブル（クライアント側）
+ * ジャンル別の記事一覧（レスポンシブ）
  *
- * 各行にタイトル（元記事リンク）・情報元・日時を表示。
- * 「翻訳」「要約」ボタンを押すと、その記事だけをオンデマンド処理し、結果を行の下に表示する。
+ * - PC（sm以上）: 表のように列が横並び（#・タイトル・情報元・日時・操作）
+ * - スマホ: 横スクロールせず、各項目を縦に積むカード表示（画面幅に収まる）
+ *
+ * 「翻訳」「要約」ボタンを押すと、その記事だけをオンデマンド処理し、結果を下に表示する。
  * 本文抜粋が無い記事はボタンを無効化する。
- *
- * スマホ対応: 親を横スクロールにし、各列の幅を確保する（窮屈な改行を防ぐ）。
- *   タイトル列は最大320pxで折り返す（狭く潰れない）。他の列は改行しない。
  */
 export type ArticleRow = {
   id: string;
@@ -26,28 +25,25 @@ type ResultState = { kind: "translate" | "summarize"; ok: boolean; text: string 
 
 export function ArticleTable({ articles }: { articles: ArticleRow[] }) {
   return (
-    <div className="mt-5 overflow-x-auto rounded-2xl border-2 border-line bg-panel">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b-2 border-line text-left text-muted">
-            <th className="w-10 px-3 py-3 font-bold">#</th>
-            <th className="px-3 py-3 font-bold">タイトル</th>
-            <th className="px-3 py-3 font-bold">情報元</th>
-            <th className="px-3 py-3 font-bold">日時</th>
-            <th className="px-3 py-3 font-bold">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {articles.map((article, index) => (
-            <ArticleRowView key={article.id} article={article} index={index} />
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-5 overflow-hidden rounded-2xl border-2 border-line bg-panel">
+      {/* PC用の見出し行（スマホでは非表示） */}
+      <div className="hidden items-center gap-4 border-b-2 border-line px-4 py-3 text-sm font-bold text-muted sm:flex">
+        <div className="w-7 shrink-0">#</div>
+        <div className="flex-1">タイトル</div>
+        <div className="w-40 shrink-0">情報元</div>
+        <div className="w-24 shrink-0">日時</div>
+        <div className="w-[140px] shrink-0">操作</div>
+      </div>
+      <ul>
+        {articles.map((article, index) => (
+          <ArticleItem key={article.id} article={article} index={index} />
+        ))}
+      </ul>
     </div>
   );
 }
 
-function ArticleRowView({ article, index }: { article: ArticleRow; index: number }) {
+function ArticleItem({ article, index }: { article: ArticleRow; index: number }) {
   const [isPending, startTransition] = useTransition();
   const [active, setActive] = useState<"translate" | "summarize" | null>(null);
   const [result, setResult] = useState<ResultState>(null);
@@ -65,70 +61,70 @@ function ArticleRowView({ article, index }: { article: ArticleRow; index: number
   }
 
   return (
-    <>
-      <tr className="border-b border-line/25 align-top">
-        <td className="px-3 py-3 font-bold text-muted">{index + 1}</td>
-        <td className="px-3 py-3">
-          {/* タイトルは240〜320pxで折り返し。狭く潰れず、広がりすぎない */}
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block min-w-[240px] max-w-[320px] font-medium text-ink underline-offset-2 hover:underline"
+    <li className="border-b border-line/25 px-4 py-3 last:border-b-0">
+      {/* スマホ: 縦積み(flex-col) / PC: 横並び(flex-row) */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+        <div className="hidden w-7 shrink-0 font-bold text-muted sm:block">{index + 1}</div>
+
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 font-medium text-ink underline-offset-2 hover:underline"
+        >
+          {article.title}
+        </a>
+
+        {/* スマホ: 情報元・日時を1行に横並び / PC: contents で各列に展開 */}
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted sm:contents sm:text-sm">
+          <span className="sm:w-40 sm:shrink-0">{article.sourceName}</span>
+          <span className="sm:w-24 sm:shrink-0">{article.publishedLabel}</span>
+        </div>
+
+        <div className="flex w-[140px] shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => run("translate")}
+            disabled={isPending || !article.hasContent}
+            title={article.hasContent ? "本文を日本語に翻訳" : "本文の抜粋がありません"}
+            className="btn-outline"
           >
-            {article.title}
-          </a>
-        </td>
-        <td className="whitespace-nowrap px-3 py-3 text-muted">{article.sourceName}</td>
-        <td className="whitespace-nowrap px-3 py-3 text-muted">{article.publishedLabel}</td>
-        <td className="whitespace-nowrap px-3 py-3">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => run("translate")}
-              disabled={isPending || !article.hasContent}
-              title={article.hasContent ? "本文を日本語に翻訳" : "本文の抜粋がありません"}
-              className="btn-outline"
-            >
-              翻訳
-            </button>
-            <button
-              type="button"
-              onClick={() => run("summarize")}
-              disabled={isPending || !article.hasContent}
-              title={article.hasContent ? "AIで要約" : "本文の抜粋がありません"}
-              className="btn-outline"
-            >
-              要約
-            </button>
-          </div>
-        </td>
-      </tr>
+            翻訳
+          </button>
+          <button
+            type="button"
+            onClick={() => run("summarize")}
+            disabled={isPending || !article.hasContent}
+            title={article.hasContent ? "AIで要約" : "本文の抜粋がありません"}
+            className="btn-outline"
+          >
+            要約
+          </button>
+        </div>
+      </div>
+
       {(isPending && active !== null) || result ? (
-        <tr className="border-b border-line/25 bg-paper">
-          <td />
-          <td colSpan={4} className="px-3 py-3">
-            {isPending ? (
-              <span className="text-xs font-bold text-muted">
-                {active === "translate" ? "翻訳中…" : "要約中…"}
-              </span>
-            ) : result ? (
-              <div className="max-w-2xl">
-                <div className="text-xs font-black text-accent">
-                  {result.kind === "translate" ? "翻訳" : "要約"}
-                </div>
-                <p
-                  className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed ${
-                    result.ok ? "text-ink" : "text-accent"
-                  }`}
-                >
-                  {result.text}
-                </p>
+        <div className="mt-2 rounded-lg border border-line/30 bg-paper px-3 py-2">
+          {isPending ? (
+            <span className="text-xs font-bold text-muted">
+              {active === "translate" ? "翻訳中…" : "要約中…"}
+            </span>
+          ) : result ? (
+            <div>
+              <div className="text-xs font-black text-accent">
+                {result.kind === "translate" ? "翻訳" : "要約"}
               </div>
-            ) : null}
-          </td>
-        </tr>
+              <p
+                className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed ${
+                  result.ok ? "text-ink" : "text-accent"
+                }`}
+              >
+                {result.text}
+              </p>
+            </div>
+          ) : null}
+        </div>
       ) : null}
-    </>
+    </li>
   );
 }

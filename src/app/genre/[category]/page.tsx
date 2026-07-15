@@ -55,7 +55,6 @@ export default async function GenrePage({ params }: { params: { category: string
         <>
           <p className="mt-4 text-xs text-muted">
             タイトルを押すと元記事へ。「翻訳」「要約」は押した記事だけをその場で処理します。
-            スマホは横スクロールで見られます。
           </p>
           <ArticleTable articles={articles} />
         </>
