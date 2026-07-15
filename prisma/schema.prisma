@@ -16,13 +16,16 @@ datasource db {
 
 /// RSSソース（TechCrunch AI 等）。src/lib/sources.ts の定義から自動で同期される。
 model Source {
-  id        String    @id @default(cuid())
-  name      String
-  url       String    @unique // RSSフィードのURL
-  category  String? // "AI全般" / "研究" / "プロダクト" / "国内" 等
-  active    Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  articles  Article[]
+  id          String    @id @default(cuid())
+  name        String
+  url         String    @unique // RSSフィードのURL
+  category    String? // "AI全般" / "研究" / "プロダクト" / "国内" / "論文" 等
+  active      Boolean   @default(true)
+  // 1回の収集で取り込む最大件数。arXivのような大量フィードが他を埋め尽くすのを防ぐ。
+  // null＝無制限。新しい順にこの件数だけ取り込む。
+  maxPerFetch Int?
+  createdAt   DateTime  @default(now())
+  articles    Article[]
 }
 
 /// 収集した記事。要約はせず、タイトルとURLのみ保持する。

@@ -32,7 +32,15 @@ export async function GET(request: Request) {
     // 1ソースの障害で全体を止めないよう、各ソースは独立して処理する
     const results = await Promise.all(
       sources.map(async (source) => {
-        const items = await fetchFeed(source.url, now);
+        const fetched = await fetchFeed(source.url, now);
+
+        // 新しい順に並べ替え、ソースごとの上限（maxPerFetch）があれば最新◯件だけに絞る。
+        // arXivのような大量フィードが他ソースを埋め尽くすのを防ぐ。
+        const sorted = fetched.sort(
+          (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
+        );
+        const items =
+          source.maxPerFetch != null ? sorted.slice(0, source.maxPerFetch) : sorted;
 
         // url に @unique があるため、既に取り込み済みの記事は skipDuplicates で自動的に除外される
         const created = await prisma.article.createMany({

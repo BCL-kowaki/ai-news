@@ -22,11 +22,13 @@ export async function syncSources(): Promise<void> {
           url: definition.url,
           category: definition.category,
           active: definition.active,
+          maxPerFetch: definition.maxPerFetch ?? null,
         },
         update: {
           name: definition.name,
           category: definition.category,
           active: definition.active,
+          maxPerFetch: definition.maxPerFetch ?? null,
         },
       }),
     ),
