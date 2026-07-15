@@ -111,4 +111,43 @@ export const SOURCE_DEFINITIONS: SourceDefinition[] = [
     active: true,
     maxPerFetch: 8,
   },
+
+  // ── YouTube（公式RSS。channel_id を差し替えればチャンネルを増減できる） ──
+  // フィードURL形式: https://www.youtube.com/feeds/videos.xml?channel_id=UCxxxx
+  // channel_id は「https://www.youtube.com/@ハンドル/videos」のページ内の channel_id= から取得できる。
+  {
+    name: "Two Minute Papers",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "AI Explained",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "Matt Wolfe",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UChpleBmo18P08aKCIgti38g",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "Matthew Berman",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCawZsQWqfGSbCI5yjkdVkTA",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
+  {
+    name: "The AI GRID",
+    url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCbY9xX3_jW5c2fjlZVBI4cg",
+    category: "動画",
+    active: true,
+    maxPerFetch: 5,
+  },
 ];

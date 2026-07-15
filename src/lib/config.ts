@@ -44,6 +44,7 @@ export const CATEGORIES: { name: string; emoji: string }[] = [
   { name: "プロダクト", emoji: "🚀" },
   { name: "国内", emoji: "🗾" },
   { name: "論文", emoji: "📄" },
+  { name: "動画", emoji: "🎬" },
 ];
 
 /** カテゴリ名 → 絵文字。定義外のカテゴリは既定の絵文字にフォールバックする。 */
