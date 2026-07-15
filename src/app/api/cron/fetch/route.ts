@@ -3,6 +3,7 @@ import { isAuthorizedCronRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchFeed } from "@/lib/rss";
 import { syncSources } from "@/lib/source-sync";
+import { needsTranslation, translateTitlesToJa } from "@/lib/translate";
 
 /**
  * RSS収集ジョブ（1時間ごとに実行される）
@@ -42,15 +43,31 @@ export async function GET(request: Request) {
         const items =
           source.maxPerFetch != null ? sorted.slice(0, source.maxPerFetch) : sorted;
 
-        // url に @unique があるため、既に取り込み済みの記事は skipDuplicates で自動的に除外される
+        // 既にDBにあるURLを除外し、本当に新しい記事だけに絞る。
+        // （翻訳は新規記事にだけ行う。毎時の重複を訳し直すとDeepLの無料枠を無駄に消費するため）
+        const existing = await prisma.article.findMany({
+          where: { url: { in: items.map((i) => i.url) } },
+          select: { url: true },
+        });
+        const existingUrls = new Set(existing.map((e) => e.url));
+        const fresh = items.filter((i) => !existingUrls.has(i.url));
+
+        // 日本語を含まないタイトルだけ抜き出してまとめて翻訳する（日本語ソースはそのまま）
+        const toTranslate = fresh.filter((i) => needsTranslation(i.title));
+        const translated = await translateTitlesToJa(toTranslate.map((i) => i.title));
+        // url → 日本語訳 の対応表を作り、各記事に割り当てる
+        const jaByUrl = new Map<string, string | null>();
+        toTranslate.forEach((item, idx) => jaByUrl.set(item.url, translated[idx]));
+
         const created = await prisma.article.createMany({
-          data: items.map((item) => ({
+          data: fresh.map((item) => ({
             sourceId: source.id,
             title: item.title,
+            titleJa: jaByUrl.get(item.url) ?? null,
             url: item.url,
             publishedAt: item.publishedAt,
           })),
-          skipDuplicates: true,
+          skipDuplicates: true, // 同時実行の保険（基本は上でフィルタ済み）
         });
 
         return { source: source.name, fetched: items.length, inserted: created.count };

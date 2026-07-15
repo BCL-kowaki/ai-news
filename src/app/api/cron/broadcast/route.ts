@@ -31,10 +31,11 @@ export async function GET(request: Request) {
   const now = new Date();
 
   try {
-    // 未送信の記事を新しい順に取得する
+    // 未送信の記事を新しい順に取得する（情報元の名前も一緒に取る）
     const pending = await prisma.article.findMany({
       where: { status: "pending" },
       orderBy: { publishedAt: "desc" },
+      include: { source: { select: { name: true } } },
     });
 
     if (pending.length === 0) {
@@ -46,7 +47,15 @@ export async function GET(request: Request) {
     const selected = pending.slice(0, MAX_ARTICLES_PER_BROADCAST);
     const overflow = pending.slice(MAX_ARTICLES_PER_BROADCAST);
 
-    const messages = buildBroadcastMessages(selected, now);
+    // 表示用に整形：日本語訳があれば訳を、なければ原文を使う。情報元名も渡す
+    const messages = buildBroadcastMessages(
+      selected.map((article) => ({
+        title: article.titleJa ?? article.title,
+        url: article.url,
+        sourceName: article.source.name,
+      })),
+      now,
+    );
 
     // Slackへ順に投稿する（レート制限に配慮して少し間隔を空ける）
     for (let i = 0; i < messages.length; i++) {

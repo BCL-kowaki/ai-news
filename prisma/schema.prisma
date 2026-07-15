@@ -33,7 +33,8 @@ model Article {
   id          String    @id @default(cuid())
   sourceId    String
   source      Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  title       String
+  title       String // 原文タイトル（そのまま保存）
+  titleJa     String? // 日本語訳（DeepL）。日本語ソースや翻訳失敗時は null → 表示は原文にフォールバック
   url         String    @unique // 重複排除のキー
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）

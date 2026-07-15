@@ -9,8 +9,9 @@ import { formatJstTime } from "./datetime";
  */
 
 export type ArticleForMessage = {
-  title: string;
+  title: string; // 表示するタイトル（日本語訳があれば訳、なければ原文）
   url: string;
+  sourceName: string; // 情報元の名前（【】で前置する）
 };
 
 /**
@@ -47,11 +48,12 @@ export function buildBroadcastMessages(
   });
 }
 
-/** Slackの行：`1. <URL|タイトル>`。リンク化してコンパクトに表示する（unfurlは使わない）。 */
+/** Slackの行：`1. 【情報元】<URL|タイトル>`。リンク化してコンパクトに表示する（unfurlは使わない）。 */
 function toSlackLine(article: ArticleForMessage, index: number): string {
   // Slackのリンク記法 <url|text> ではタイトル内の < > & が壊れるためエスケープする
   const safeTitle = escapeSlack(article.title);
-  return `${index + 1}. <${article.url}|${safeTitle}>`;
+  const safeSource = escapeSlack(article.sourceName);
+  return `${index + 1}. 【${safeSource}】<${article.url}|${safeTitle}>`;
 }
 
 /** Slack mrkdwn で特別扱いされる文字を無害化する。 */
