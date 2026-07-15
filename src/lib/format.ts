@@ -1,10 +1,11 @@
-import { ARTICLES_PER_MESSAGE } from "./config";
+import { ARTICLES_PER_MESSAGE, CATEGORIES, CATEGORY_EMOJI } from "./config";
 import { formatJstTime } from "./datetime";
 
 /**
  * Slackに送るメッセージの整形
  *
- * 要約はしない。タイトルとURLをそのまま箇条書きにする。
+ * 要約はしない。タイトル（英語は日本語訳）とURLを箇条書きにする。
+ * ジャンル（カテゴリ）ごとに見出しを分けて、1ジャンル＝1メッセージ（多ければ分割）で出す。
  * 出力は「毎回同じ入力なら同じ結果」になる純粋なロジックにしてある（AIに任せない）。
  */
 
@@ -12,12 +13,14 @@ export type ArticleForMessage = {
   title: string; // 表示するタイトル（日本語訳があれば訳、なければ原文）
   url: string;
   sourceName: string; // 情報元の名前（【】で前置する）
+  category: string; // ジャンル（見出しのグルーピングに使う）
 };
 
 /**
- * 定期配信用のメッセージ群を作る。
+ * 配信用のメッセージ群を作る。
  *
- * 記事が多いときは ARTICLES_PER_MESSAGE 件ごとに分割し、複数メッセージにして返す
+ * ジャンルごとにまとめ、CATEGORIES の並び順で見出しを付ける。
+ * 1ジャンルの記事が多いときは ARTICLES_PER_MESSAGE 件ごとに分割する
  * （Slackは無料なので分割してもコストは増えない。1メッセージが長すぎるのを防ぐ）。
  *
  * @returns 投稿する順のメッセージ文字列の配列（空配列＝送るものなし）
@@ -28,24 +31,52 @@ export function buildBroadcastMessages(
 ): string[] {
   if (articles.length === 0) return [];
 
-  const chunks = chunk(articles, ARTICLES_PER_MESSAGE);
-  const totalPages = chunks.length;
+  const messages: string[] = [];
 
-  return chunks.map((group, page) => {
-    // 1ページ目だけ時刻入りの見出し、2ページ目以降は「(続き 2/3)」を付ける
-    const header =
-      totalPages === 1
-        ? `:newspaper: *AIニュース（${formatJstTime(now)}更新・${articles.length}件）*`
-        : page === 0
-          ? `:newspaper: *AIニュース（${formatJstTime(now)}更新・${articles.length}件）*`
-          : `:newspaper: *AIニュース（続き ${page + 1}/${totalPages}）*`;
+  for (const { category, items } of groupByCategory(articles)) {
+    const emoji = CATEGORY_EMOJI[category] ?? "📰";
+    const chunks = chunk(items, ARTICLES_PER_MESSAGE);
 
-    // このページの通し番号は、前ページまでの件数を足して連番にする
-    const baseIndex = page * ARTICLES_PER_MESSAGE;
-    const lines = group.map((article, i) => toSlackLine(article, baseIndex + i));
+    chunks.forEach((group, page) => {
+      // 1ページ目は時刻＋ジャンル名＋件数、2ページ目以降は「続き」表示
+      const header =
+        page === 0
+          ? `${emoji} *AIニュース（${formatJstTime(now)}更新）｜${category}（${items.length}件）*`
+          : `${emoji} *${category}（続き ${page + 1}/${chunks.length}）*`;
 
-    return [header, "", ...lines].join("\n");
-  });
+      // 番号はジャンル内の通し番号（前ページまでの件数を足す）
+      const baseIndex = page * ARTICLES_PER_MESSAGE;
+      const lines = group.map((article, i) => toSlackLine(article, baseIndex + i));
+
+      messages.push([header, "", ...lines].join("\n"));
+    });
+  }
+
+  return messages;
+}
+
+/**
+ * 記事をジャンルごとにまとめる。
+ * CATEGORIES の順で並べ、定義外のカテゴリがあれば最後に回す（取りこぼさない）。
+ */
+function groupByCategory(
+  articles: ArticleForMessage[],
+): { category: string; items: ArticleForMessage[] }[] {
+  const byCategory = new Map<string, ArticleForMessage[]>();
+  for (const article of articles) {
+    const list = byCategory.get(article.category) ?? [];
+    list.push(article);
+    byCategory.set(article.category, list);
+  }
+
+  const orderedNames = CATEGORIES.map((c) => c.name);
+  // 定義済みカテゴリ → 定義順、その他 → 出現順で末尾に
+  const extras = Array.from(byCategory.keys()).filter((name) => !orderedNames.includes(name));
+  const order = [...orderedNames, ...extras];
+
+  return order
+    .filter((name) => byCategory.has(name))
+    .map((name) => ({ category: name, items: byCategory.get(name)! }));
 }
 
 /** Slackの行：`1. 【情報元】<URL|タイトル>`。リンク化してコンパクトに表示する（unfurlは使わない）。 */

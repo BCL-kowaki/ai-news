@@ -30,3 +30,26 @@ export const RSS_TIMEOUT_MS = 10_000;
 
 /** 表示・集計に使うタイムゾーン。 */
 export const TIMEZONE = "Asia/Tokyo";
+
+/**
+ * ジャンル（カテゴリ）の定義（単一定義元）
+ *
+ * 配信の見出しグルーピングと、ダッシュボードのジャンルボタンは、この定義を使う。
+ * ここの並び順が、配信メッセージやボタンの表示順になる。
+ * src/lib/sources.ts の各ソースの category は、この name のどれかに一致させること。
+ */
+export const CATEGORIES: { name: string; emoji: string }[] = [
+  { name: "AI全般", emoji: "📰" },
+  { name: "研究", emoji: "🔬" },
+  { name: "プロダクト", emoji: "🚀" },
+  { name: "国内", emoji: "🗾" },
+  { name: "論文", emoji: "📄" },
+];
+
+/** カテゴリ名 → 絵文字。定義外のカテゴリは既定の絵文字にフォールバックする。 */
+export const CATEGORY_EMOJI: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.name, c.emoji]),
+);
+
+/** 手動ジャンル通知（ダッシュボードのボタン）で1回に送る記事数。 */
+export const MANUAL_NOTIFY_COUNT = 15;

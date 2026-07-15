@@ -31,11 +31,11 @@ export async function GET(request: Request) {
   const now = new Date();
 
   try {
-    // 未送信の記事を新しい順に取得する（情報元の名前も一緒に取る）
+    // 未送信の記事を新しい順に取得する（情報元の名前とジャンルも一緒に取る）
     const pending = await prisma.article.findMany({
       where: { status: "pending" },
       orderBy: { publishedAt: "desc" },
-      include: { source: { select: { name: true } } },
+      include: { source: { select: { name: true, category: true } } },
     });
 
     if (pending.length === 0) {
@@ -53,6 +53,7 @@ export async function GET(request: Request) {
         title: article.titleJa ?? article.title,
         url: article.url,
         sourceName: article.source.name,
+        category: article.source.category ?? "その他",
       })),
       now,
     );
