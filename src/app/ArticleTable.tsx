@@ -9,6 +9,9 @@ import { summarizeArticle, translateArticle } from "./actions";
  * 各行にタイトル（元記事リンク）・情報元・日時を表示。
  * 「翻訳」「要約」ボタンを押すと、その記事だけをオンデマンド処理し、結果を行の下に表示する。
  * 本文抜粋が無い記事はボタンを無効化する。
+ *
+ * スマホ対応: 親を横スクロールにし、各列の幅を確保する（窮屈な改行を防ぐ）。
+ *   タイトル列は最大320pxで折り返す（狭く潰れない）。他の列は改行しない。
  */
 export type ArticleRow = {
   id: string;
@@ -23,15 +26,15 @@ type ResultState = { kind: "translate" | "summarize"; ok: boolean; text: string 
 
 export function ArticleTable({ articles }: { articles: ArticleRow[] }) {
   return (
-    <div className="mt-6 overflow-x-auto">
+    <div className="mt-5 overflow-x-auto rounded-2xl border-2 border-line bg-panel">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-300 text-left text-slate-500">
-            <th className="w-8 py-2 pr-2 font-medium">#</th>
-            <th className="py-2 pr-4 font-medium">タイトル</th>
-            <th className="py-2 pr-4 font-medium">情報元</th>
-            <th className="py-2 pr-4 font-medium">日時</th>
-            <th className="py-2 font-medium">操作</th>
+          <tr className="border-b-2 border-line text-left text-muted">
+            <th className="w-10 px-3 py-3 font-bold">#</th>
+            <th className="px-3 py-3 font-bold">タイトル</th>
+            <th className="px-3 py-3 font-bold">情報元</th>
+            <th className="px-3 py-3 font-bold">日時</th>
+            <th className="px-3 py-3 font-bold">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -63,28 +66,29 @@ function ArticleRowView({ article, index }: { article: ArticleRow; index: number
 
   return (
     <>
-      <tr className="border-b border-slate-100 align-top">
-        <td className="py-2 pr-2 text-slate-400">{index + 1}</td>
-        <td className="py-2 pr-4">
+      <tr className="border-b border-line/25 align-top">
+        <td className="px-3 py-3 font-bold text-muted">{index + 1}</td>
+        <td className="px-3 py-3">
+          {/* タイトルは240〜320pxで折り返し。狭く潰れず、広がりすぎない */}
           <a
             href={article.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
+            className="block min-w-[240px] max-w-[320px] font-medium text-ink underline-offset-2 hover:underline"
           >
             {article.title}
           </a>
         </td>
-        <td className="py-2 pr-4 whitespace-nowrap text-slate-600">{article.sourceName}</td>
-        <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{article.publishedLabel}</td>
-        <td className="py-2 whitespace-nowrap">
+        <td className="whitespace-nowrap px-3 py-3 text-muted">{article.sourceName}</td>
+        <td className="whitespace-nowrap px-3 py-3 text-muted">{article.publishedLabel}</td>
+        <td className="whitespace-nowrap px-3 py-3">
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => run("translate")}
               disabled={isPending || !article.hasContent}
               title={article.hasContent ? "本文を日本語に翻訳" : "本文の抜粋がありません"}
-              className="rounded border border-slate-300 px-2 py-1 text-xs transition hover:border-slate-500 disabled:opacity-40"
+              className="btn-outline"
             >
               翻訳
             </button>
@@ -93,7 +97,7 @@ function ArticleRowView({ article, index }: { article: ArticleRow; index: number
               onClick={() => run("summarize")}
               disabled={isPending || !article.hasContent}
               title={article.hasContent ? "AIで要約" : "本文の抜粋がありません"}
-              className="rounded border border-slate-300 px-2 py-1 text-xs transition hover:border-slate-500 disabled:opacity-40"
+              className="btn-outline"
             >
               要約
             </button>
@@ -101,21 +105,21 @@ function ArticleRowView({ article, index }: { article: ArticleRow; index: number
         </td>
       </tr>
       {(isPending && active !== null) || result ? (
-        <tr className="border-b border-slate-100 bg-slate-50">
+        <tr className="border-b border-line/25 bg-paper">
           <td />
-          <td colSpan={4} className="py-2 pr-4">
+          <td colSpan={4} className="px-3 py-3">
             {isPending ? (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs font-bold text-muted">
                 {active === "translate" ? "翻訳中…" : "要約中…"}
               </span>
             ) : result ? (
-              <div>
-                <div className="text-xs font-semibold text-slate-500">
+              <div className="max-w-2xl">
+                <div className="text-xs font-black text-accent">
                   {result.kind === "translate" ? "翻訳" : "要約"}
                 </div>
                 <p
-                  className={`mt-1 whitespace-pre-wrap text-sm ${
-                    result.ok ? "text-slate-800" : "text-red-600"
+                  className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed ${
+                    result.ok ? "text-ink" : "text-accent"
                   }`}
                 >
                   {result.text}

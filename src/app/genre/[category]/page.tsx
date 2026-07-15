@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticleTable, type ArticleRow } from "@/app/ArticleTable";
 import { SendToSlackButton } from "@/app/SendToSlackButton";
-import { CATEGORIES, CATEGORY_EMOJI } from "@/lib/config";
+import { CATEGORIES, CATEGORY_COLOR, CATEGORY_EMOJI } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -25,33 +25,37 @@ export default async function GenrePage({ params }: { params: { category: string
 
   const articles = await loadArticles(category);
   const emoji = CATEGORY_EMOJI[category] ?? "📰";
+  const color = CATEGORY_COLOR[category] ?? "#FFF9EC";
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/" className="text-sm text-blue-600 hover:underline">
+    <main className="mx-auto max-w-4xl px-5 py-10 sm:py-14">
+      <Link href="/" className="text-sm font-bold text-accent hover:underline">
         ← ダッシュボードに戻る
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">
-          {emoji} {category}
-          <span className="ml-2 text-base font-normal text-slate-500">
-            {articles?.length ?? 0} 件
+        <h1 className="flex items-center gap-3 text-3xl font-black" style={{ fontWeight: 950 }}>
+          <span
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-line text-2xl"
+            style={{ backgroundColor: color }}
+          >
+            {emoji}
           </span>
+          {category}
+          <span className="text-base font-bold text-muted">{articles?.length ?? 0} 件</span>
         </h1>
         <SendToSlackButton category={category} />
       </div>
 
       {articles === null ? (
-        <p className="mt-8 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-          DBに接続できませんでした。
-        </p>
+        <p className="panel mt-8 p-4 text-sm text-accent">DBに接続できませんでした。</p>
       ) : articles.length === 0 ? (
-        <p className="mt-8 text-sm text-slate-500">このジャンルの記事はまだありません。</p>
+        <p className="mt-8 text-sm text-muted">このジャンルの記事はまだありません。</p>
       ) : (
         <>
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-muted">
             タイトルを押すと元記事へ。「翻訳」「要約」は押した記事だけをその場で処理します。
+            スマホは横スクロールで見られます。
           </p>
           <ArticleTable articles={articles} />
         </>

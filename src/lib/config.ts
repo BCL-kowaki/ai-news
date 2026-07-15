@@ -38,18 +38,24 @@ export const TIMEZONE = "Asia/Tokyo";
  * ここの並び順が、配信メッセージやボタンの表示順になる。
  * src/lib/sources.ts の各ソースの category は、この name のどれかに一致させること。
  */
-export const CATEGORIES: { name: string; emoji: string }[] = [
-  { name: "AI全般", emoji: "📰" },
-  { name: "研究", emoji: "🔬" },
-  { name: "プロダクト", emoji: "🚀" },
-  { name: "国内", emoji: "🗾" },
-  { name: "論文", emoji: "📄" },
-  { name: "動画", emoji: "🎬" },
+export const CATEGORIES: { name: string; emoji: string; color: string }[] = [
+  // color はタグ/カードの背景色（パステル）。枠線は共通の茶色（--line）。
+  { name: "AI全般", emoji: "📰", color: "#F4DFBD" }, // アンバー
+  { name: "研究", emoji: "🔬", color: "#DCE9ED" }, // ブルー
+  { name: "プロダクト", emoji: "🚀", color: "#F4D5CD" }, // テラコッタ
+  { name: "国内", emoji: "🗾", color: "#E0E7D7" }, // セージ
+  { name: "論文", emoji: "📄", color: "#E7DDEA" }, // ラベンダー
+  { name: "動画", emoji: "🎬", color: "#F3E0CC" }, // ピーチ
 ];
 
 /** カテゴリ名 → 絵文字。定義外のカテゴリは既定の絵文字にフォールバックする。 */
 export const CATEGORY_EMOJI: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.name, c.emoji]),
+);
+
+/** カテゴリ名 → タグ背景色。定義外は既定色にフォールバックする。 */
+export const CATEGORY_COLOR: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.name, c.color]),
 );
 
 /** 手動ジャンル通知（ダッシュボードのボタン）で1回に送る記事数。 */

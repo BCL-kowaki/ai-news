@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    /* 日本語も含む標準サンセリフ。参考サイトに合わせる */
+    font-family: system-ui, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  }
+}
+
+@layer components {
+  /* パネル：クリーム地に太めの茶枠＋硬めの影（エディトリアル調の基本パーツ） */
+  .panel {
+    @apply rounded-2xl border-2 border-line bg-panel shadow-panel;
+  }
+
+  /* タグ/ピル：丸っこい角に太めの茶枠 */
+  .tag {
+    @apply inline-flex items-center gap-1 rounded-full border-2 border-line px-3 py-1 text-sm font-bold;
+  }
+
+  /* ボタン（枠線＋クリーム地）。押せる小物用 */
+  .btn-outline {
+    @apply rounded-lg border-2 border-line bg-panel px-3 py-1 text-xs font-bold transition hover:bg-paper disabled:opacity-40;
+  }
+
+  /* 主要ボタン（濃い茶の塗り） */
+  .btn-solid {
+    @apply rounded-lg border-2 border-line bg-ink px-4 py-2 text-sm font-bold text-panel transition hover:bg-line disabled:opacity-50;
+  }
+}

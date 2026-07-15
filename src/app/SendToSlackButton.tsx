@@ -20,7 +20,7 @@ export function SendToSlackButton({ category }: { category: string }) {
       setMessage(
         result.ok
           ? result.count > 0
-            ? `Slackに送信しました（${result.count}件）`
+            ? `送信しました（${result.count}件）`
             : "送る記事がありませんでした"
           : `失敗：${result.error ?? "エラー"}`,
       );
@@ -29,15 +29,10 @@ export function SendToSlackButton({ category }: { category: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
-      >
+      <button type="button" onClick={handleClick} disabled={isPending} className="btn-solid">
         このジャンルをSlackに送る
       </button>
-      {message && <span className="text-xs text-blue-600">{message}</span>}
+      {message && <span className="text-xs font-bold text-accent">{message}</span>}
     </div>
   );
 }
