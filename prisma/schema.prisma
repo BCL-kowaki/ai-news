@@ -35,6 +35,7 @@ model Article {
   source      Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   title       String // 原文タイトル（そのまま保存）
   titleJa     String? // 日本語訳（DeepL）。日本語ソースや翻訳失敗時は null → 表示は原文にフォールバック
+  contentText String? // RSSの本文抜粋（arXivは要旨）。オンデマンドの本文翻訳・要約の入力に使う
   url         String    @unique // 重複排除のキー
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）

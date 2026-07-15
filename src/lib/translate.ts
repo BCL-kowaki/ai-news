@@ -43,6 +43,16 @@ export async function translateTitlesToJa(titles: string[]): Promise<(string | n
   return results;
 }
 
+/**
+ * 1つの文章（記事本文の抜粋など）を日本語に訳す。
+ * 訳せなかった場合は null（呼び出し側で「翻訳できませんでした」等を表示）。
+ */
+export async function translateOneToJa(text: string): Promise<string | null> {
+  if (!text.trim()) return null;
+  const [result] = await translateTitlesToJa([text]);
+  return result;
+}
+
 async function translateBatch(batch: string[], apiKey: string): Promise<(string | null)[]> {
   try {
     const response = await fetch(DEEPL_ENDPOINT, {

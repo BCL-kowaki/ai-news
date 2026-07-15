@@ -64,6 +64,7 @@ export async function GET(request: Request) {
             sourceId: source.id,
             title: item.title,
             titleJa: jaByUrl.get(item.url) ?? null,
+            contentText: item.contentText,
             url: item.url,
             publishedAt: item.publishedAt,
           })),

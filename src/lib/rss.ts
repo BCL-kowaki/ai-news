@@ -4,13 +4,18 @@ import { FETCH_WINDOW_HOURS, RSS_TIMEOUT_MS } from "./config";
 /**
  * RSSフィードの取得とパース
  *
- * 要約はしない（Claude API等は一切呼ばない）。タイトルとURLだけを取り出す。
+ * 収集時はタイトル・URLに加え、本文抜粋（contentText）も取り出して保存する。
+ * この抜粋は、あとで画面から「翻訳」「要約」を押したときの入力に使う（収集時は翻訳・要約しない）。
  */
+
+/** 本文抜粋として保存する最大文字数（DeepL/要約の入力を無駄に大きくしないため）。 */
+const CONTENT_TEXT_MAX = 2000;
 
 export type FetchedItem = {
   title: string;
   url: string;
   publishedAt: Date;
+  contentText: string | null; // RSSの説明/本文抜粋（arXivは要旨）。無い場合はnull
 };
 
 const parser = new Parser({
@@ -47,10 +52,30 @@ export async function fetchFeed(feedUrl: string, now: Date = new Date()): Promis
     const publishedAt = parseDate(item.isoDate ?? item.pubDate) ?? now;
     if (publishedAt < cutoff) continue;
 
-    items.push({ title, url, publishedAt });
+    items.push({ title, url, publishedAt, contentText: extractContent(item) });
   }
 
   return items;
+}
+
+/**
+ * RSSアイテムから本文抜粋を取り出す。
+ * contentSnippet（HTMLタグ除去済みの要約）を優先し、無ければ content を使う。
+ * arXivは要旨（abstract）がここに入る。長すぎる場合は先頭を切り出す。
+ */
+function extractContent(item: Record<string, unknown>): string | null {
+  const raw =
+    (typeof item.contentSnippet === "string" && item.contentSnippet) ||
+    (typeof item.content === "string" && item.content) ||
+    (typeof item.summary === "string" && item.summary) ||
+    "";
+  // HTMLタグを除去し、連続する空白を1つにまとめる
+  const text = raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  return text.length > CONTENT_TEXT_MAX ? `${text.slice(0, CONTENT_TEXT_MAX)}…` : text;
 }
 
 /**

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArticleTable, type ArticleRow } from "@/app/ArticleTable";
 import { SendToSlackButton } from "@/app/SendToSlackButton";
 import { CATEGORIES, CATEGORY_EMOJI } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ import { prisma } from "@/lib/prisma";
  * ジャンル別の記事一覧ページ（/genre/[category]）
  *
  * そのジャンルの記事を表形式で一覧する。各行を押すと元記事のページへ遷移する。
+ * 各行の「翻訳」「要約」で、その記事だけをその場で日本語化・要約できる（オンデマンド）。
  * ページ上部の「Slackに送る」ボタンで、このジャンルの最新記事をSlackに送れる。
  */
 
@@ -47,57 +49,18 @@ export default async function GenrePage({ params }: { params: { category: string
       ) : articles.length === 0 ? (
         <p className="mt-8 text-sm text-slate-500">このジャンルの記事はまだありません。</p>
       ) : (
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-slate-300 text-left text-slate-500">
-                <th className="w-8 py-2 pr-2 font-medium">#</th>
-                <th className="py-2 pr-4 font-medium">タイトル</th>
-                <th className="py-2 pr-4 font-medium">情報元</th>
-                <th className="py-2 font-medium">日時</th>
-              </tr>
-            </thead>
-            <tbody>
-              {articles.map((article, index) => (
-                <tr key={article.id} className="border-b border-slate-100 align-top">
-                  <td className="py-2 pr-2 text-slate-400">{index + 1}</td>
-                  <td className="py-2 pr-4">
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {article.title}
-                    </a>
-                  </td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-slate-600">
-                    {article.sourceName}
-                  </td>
-                  <td className="py-2 whitespace-nowrap text-slate-500">
-                    {formatJst(article.publishedAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <p className="mt-4 text-xs text-slate-500">
+            タイトルを押すと元記事へ。「翻訳」「要約」は押した記事だけをその場で処理します。
+          </p>
+          <ArticleTable articles={articles} />
+        </>
       )}
     </main>
   );
 }
 
-function formatJst(date: Date): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-async function loadArticles(category: string) {
+async function loadArticles(category: string): Promise<ArticleRow[] | null> {
   try {
     const articles = await prisma.article.findMany({
       where: { status: { in: ["pending", "sent"] }, source: { category } },
@@ -110,10 +73,21 @@ async function loadArticles(category: string) {
       title: a.titleJa ?? a.title,
       url: a.url,
       sourceName: a.source.name,
-      publishedAt: a.publishedAt,
+      publishedLabel: formatJst(a.publishedAt),
+      hasContent: Boolean(a.contentText),
     }));
   } catch (error) {
     console.error("[ジャンル一覧] 取得失敗:", error);
     return null;
   }
+}
+
+function formatJst(date: Date): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
