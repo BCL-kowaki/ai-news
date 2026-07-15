@@ -1,0 +1,55 @@
+# AIニュースの定期実行（GitHub Actions）
+#
+# なぜVercel Cronを使わないのか:
+#   Vercelの無料プラン(Hobby)は「cronは1日1回まで」という制限があり、
+#   毎時のRSS収集も1日3回の配信もデプロイ時にエラーになる。
+#   GitHub Actionsのスケジュール実行は無料で分単位の指定ができるため、こちらから叩く。
+#   （Vercel Proに切り替えたら vercel.json の cron に移行できる。docs/仕様書.md を参照）
+#
+# 事前にGitHubリポジトリへ登録が必要なSecrets（Settings > Secrets and variables > Actions）:
+#   APP_URL     : https://あなたのアプリ.vercel.app （末尾のスラッシュなし）
+#   CRON_SECRET : Vercelに設定したものと同じ値
+#
+# 注意: GitHub Actionsのスケジュールは混雑時に数分〜十数分遅れることがある（仕様）。
+
+name: AIニュース定期実行
+
+on:
+  schedule:
+    # RSS収集：毎時0分（cronの時刻はUTC。毎時なので日本時間でも毎時0分になる）
+    - cron: "0 * * * *"
+    # Slack配信：UTC 23:00 / 04:00 / 10:00 = 日本時間 8:00 / 13:00 / 19:00
+    - cron: "0 23,4,10 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "手動で実行する処理"
+        required: true
+        default: fetch
+        type: choice
+        options:
+          - fetch # RSS収集のみ
+          - broadcast # Slack配信
+
+jobs:
+  fetch:
+    name: RSS収集
+    if: github.event.schedule == '0 * * * *' || inputs.job == 'fetch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 収集エンドポイントを呼ぶ
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/fetch"
+
+  broadcast:
+    name: Slack配信
+    if: github.event.schedule == '0 23,4,10 * * *' || inputs.job == 'broadcast'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 配信エンドポイントを呼ぶ
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/broadcast"

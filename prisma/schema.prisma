@@ -1,0 +1,53 @@
+// AIニュース自動配信システム — DBスキーマ
+// Neon PostgreSQL を使用。
+// - DATABASE_URL: 実行時に使う接続文字列（Neonの「Pooled connection」= -pooler 付き）
+// - DIRECT_URL:   マイグレーション用の直接接続（Neonの「Direct connection」）
+//   ※ サーバーレスは同時起動が多くDB接続が枯渇するため、実行時はプール経由が必須。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// RSSソース（TechCrunch AI 等）。src/lib/sources.ts の定義から自動で同期される。
+model Source {
+  id        String    @id @default(cuid())
+  name      String
+  url       String    @unique // RSSフィードのURL
+  category  String? // "AI全般" / "研究" / "プロダクト" / "国内" 等
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  articles  Article[]
+}
+
+/// 収集した記事。要約はせず、タイトルとURLのみ保持する。
+model Article {
+  id          String    @id @default(cuid())
+  sourceId    String
+  source      Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  title       String
+  url         String    @unique // 重複排除のキー
+  publishedAt DateTime
+  status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）
+  fetchedAt   DateTime  @default(now())
+  sentAt      DateTime?
+
+  // 配信ジョブは「pendingを古い順に取得」するため、この2列の複合インデックスが効く
+  @@index([status, publishedAt])
+}
+
+/// Slack配信の記録。1レコード = 配信ジョブ1回。稼働確認・統計に使う。
+/// （Slackは無料枠上限が無いため、LINE版のような送信数ガードには使わない）
+model SendLog {
+  id        String   @id @default(cuid())
+  sentAt    DateTime @default(now())
+  count     Int // その回で配信した記事数
+  monthKey  String // "2026-07" 形式。月次の配信回数を数えるためのキー
+
+  @@index([monthKey])
+}
