@@ -1,4 +1,4 @@
-// AIニュース自動配信システム — DBスキーマ
+// AI秘書（秘書エージェント） — DBスキーマ
 // Neon PostgreSQL を使用。
 // - DATABASE_URL: 実行時に使う接続文字列（Neonの「Pooled connection」= -pooler 付き）
 // - DIRECT_URL:   マイグレーション用の直接接続（Neonの「Direct connection」）
@@ -46,8 +46,7 @@ model Article {
   @@index([status, publishedAt])
 }
 
-/// Slack配信の記録。1レコード = 配信ジョブ1回。稼働確認・統計に使う。
-/// （Slackは無料枠上限が無いため、LINE版のような送信数ガードには使わない）
+/// Slack配信の記録（旧機能の名残。Slack配信廃止後は参照しないが、履歴保全のため残置）
 model SendLog {
   id        String   @id @default(cuid())
   sentAt    DateTime @default(now())
@@ -55,4 +54,55 @@ model SendLog {
   monthKey  String // "2026-07" 形式。月次の配信回数を数えるためのキー
 
   @@index([monthKey])
+}
+
+/// 連携したGoogleアカウント（会社用・個人用など）。フェーズ2で使用。
+/// refresh_token は AES-256-GCM で暗号化して保存する（平文では絶対に持たない）。
+model GoogleAccount {
+  id              String   @id @default(cuid())
+  label           String // 表示名（"会社" / "個人" など）
+  email           String   @unique
+  refreshTokenEnc String // 暗号化済み refresh_token
+  scopes          String // 許可されたスコープ（スペース区切り）
+  status          String   @default("active") // active（有効） / expired（要再連携）
+  calendarIds     Json? // ダッシュボードに表示するカレンダーID配列（家族共用カレンダー含む選択）
+  colorHex        String? // 予定表示の色分け
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// タスク（自前管理。Google Tasks等とは同期しない）
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  note        String? // 補足メモ（任意）
+  due         DateTime? // 期限（任意）
+  priority    Int       @default(1) // 0=低 / 1=中 / 2=高
+  status      String    @default("open") // open（未完了） / done（完了）
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  // ダッシュボードは「未完了を優先度・期限順に取得」するため
+  @@index([status, due])
+}
+
+/// メモ。kind で「突発メモ」と「よく使うメモ」を分ける。
+model Memo {
+  id        String   @id @default(cuid())
+  kind      String // "quick"（突発メモ） / "pinned"（よく使うメモ）
+  title     String? // よく使うメモの見出し（任意）
+  body      String
+  sortOrder Int      @default(0) // よく使うメモの並び順（小さいほど上）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, sortOrder])
+}
+
+/// AIブリーフィング（朝の秘書メモ）。フェーズ3のcronが1日1件生成する。
+model Briefing {
+  id        String   @id @default(cuid())
+  dateKey   String   @unique // "2026-07-17" 形式（JST基準の日付）
+  content   String // 生成されたブリーフィング本文（Markdown）
+  createdAt DateTime @default(now())
 }

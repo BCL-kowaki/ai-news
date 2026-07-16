@@ -1,36 +1,33 @@
 "use server";
 
-import { notifyByCategory } from "@/lib/notify";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
 import { summarizeToJa } from "@/lib/summarize";
 import { translateOneToJa } from "@/lib/translate";
 
 /**
- * サーバーアクション：指定ジャンルの最新記事をSlackへ通知する。
+ * 記事のサーバーアクション（翻訳・要約。どちらもオンデマンド）
  *
  * "use server" 宣言により、この関数はサーバー側でのみ実行される。
- * SLACK_WEBHOOK_URL 等の秘密情報はブラウザに一切渡らない。
+ * APIキー等の秘密情報はブラウザに一切渡らない。
+ * ログイン中のユーザーからの実行だけを許可する（多層防御）。
  */
-export async function sendGenreNotification(
-  category: string,
-): Promise<{ ok: boolean; count: number; error?: string }> {
-  try {
-    const { count } = await notifyByCategory(category);
-    return { ok: true, count };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "通知に失敗しました";
-    console.error("[手動通知] 失敗:", message);
-    return { ok: false, count: 0, error: message };
-  }
+
+async function assertLoggedIn(): Promise<void> {
+  const session = await getServerSession(authOptions);
+  if (!session) throw new Error("ログインが必要です");
 }
 
 /**
- * サーバーアクション：1記事の本文抜粋を日本語に翻訳する（オンデマンド）。
+ * 1記事の本文抜粋を日本語に翻訳する（オンデマンド）。
  * DeepLの無料枠を守るため、押した記事だけを処理する。
  */
 export async function translateArticle(
   articleId: string,
 ): Promise<{ ok: boolean; text: string }> {
+  await assertLoggedIn();
+
   const article = await prisma.article.findUnique({
     where: { id: articleId },
     select: { contentText: true },
@@ -45,11 +42,13 @@ export async function translateArticle(
 }
 
 /**
- * サーバーアクション：1記事を日本語で要約する（オンデマンド・Claude Haiku）。
+ * 1記事を日本語で要約する（オンデマンド・Claude Haiku）。
  */
 export async function summarizeArticle(
   articleId: string,
 ): Promise<{ ok: boolean; text: string }> {
+  await assertLoggedIn();
+
   const article = await prisma.article.findUnique({
     where: { id: articleId },
     select: { title: true, titleJa: true, contentText: true },
