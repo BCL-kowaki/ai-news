@@ -1,4 +1,3 @@
-import { ListTodo } from "lucide-react";
 import { TASK_PRIORITIES } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { TaskItem } from "@/components/TaskItem";
@@ -18,10 +17,7 @@ export default async function TasksPage() {
 
   return (
     <main>
-      <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-        <ListTodo className="h-5 w-5 text-accent" aria-hidden="true" />
-        タスク
-      </h1>
+      <h1 className="large-title">タスク</h1>
 
       {/* 追加フォーム */}
       <AutoResetForm
@@ -73,7 +69,7 @@ export default async function TasksPage() {
             {data.open.length === 0 ? (
               <p className="mt-3 text-sm text-muted">未完了のタスクはありません 🎉</p>
             ) : (
-              <ul className="mt-1 divide-y divide-line/60">
+              <ul className="mt-1 divide-y divide-line">
                 {data.open.map((task) => (
                   <TaskItem key={task.id} task={task} />
                 ))}
@@ -84,7 +80,7 @@ export default async function TasksPage() {
           {data.done.length > 0 && (
             <section className="card mt-4 p-4">
               <h2 className="text-sm font-semibold text-muted">完了済み（直近20件）</h2>
-              <ul className="mt-1 divide-y divide-line/60">
+              <ul className="mt-1 divide-y divide-line">
                 {data.done.map((task) => (
                   <TaskItem key={task.id} task={task} />
                 ))}

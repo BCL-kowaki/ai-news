@@ -28,7 +28,7 @@ type ResultState = { kind: "translate" | "summarize"; ok: boolean; text: string 
 export function ArticleTable({ articles }: { articles: ArticleRow[] }) {
   return (
     <div className="card mt-4 overflow-hidden">
-      <ul className="divide-y divide-line/60">
+      <ul className="divide-y divide-line">
         {articles.map((article) => (
           <ArticleItem key={article.id} article={article} />
         ))}

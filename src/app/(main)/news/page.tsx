@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Newspaper } from "lucide-react";
 import { CATEGORIES, CATEGORY_STYLE_FALLBACK, NEWS_LIST_COUNT } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
@@ -17,11 +16,8 @@ export default async function NewsPage() {
 
   return (
     <main>
-      <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-        <Newspaper className="h-5 w-5 text-accent" aria-hidden="true" />
-        ニュース
-      </h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="large-title">ニュース</h1>
+      <p className="mt-1 text-[13px] text-muted">
         毎時自動収集。タイトルを押すと元記事へ。「翻訳」「要約」は押した記事だけをその場で処理します。
       </p>
 

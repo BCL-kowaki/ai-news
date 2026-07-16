@@ -1,36 +1,41 @@
 import type { Config } from "tailwindcss";
 
 /**
- * デザイントークン（ベントグリッド・スタイル）
+ * デザイントークン（iOSネイティブ調）
  *
- * 白カード＋薄グレー背景＋Indigoアクセントの「Bento Box Grid」体系。
  * 色の実体は globals.css の CSS変数（:root）にあり、ここでは名前を割り当てるだけ。
- * → ダークモード対応や配色変更は globals.css の変数を書き換えれば全体に効く。
+ * → 配色変更・ダークモード対応は globals.css の変数を書き換えれば全体に効く。
  */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        bg: "var(--bg)", // ページ背景（薄いグレー）
-        card: "var(--card)", // カード背景（白）
-        ink: "var(--ink)", // 本文（ほぼ黒）
-        muted: "var(--muted)", // 補助テキスト（グレー）
-        faint: "var(--faint)", // さらに薄いテキスト（日付など）
-        line: "var(--line)", // 枠線・区切り
-        accent: "var(--accent)", // アクセント（Indigo）
-        "accent-soft": "var(--accent-soft)", // アクセントの淡色背景
+        bg: "var(--bg)", // ページ背景（iOS systemGroupedBackground）
+        card: "var(--card)", // カード背景
+        ink: "var(--ink)", // 本文
+        muted: "var(--muted)", // 補助テキスト（secondaryLabel）
+        faint: "var(--faint)", // 最弱テキスト（tertiaryLabel）
+        line: "var(--line)", // ヘアライン区切り
+        accent: "var(--accent)", // iOSブルー
+        "accent-strong": "var(--accent-strong)",
+        "accent-soft": "var(--accent-soft)",
+        fill: "var(--fill)", // 入力欄・グレーボタンの塗り
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "var(--font-noto-sans-jp)", "system-ui", "sans-serif"],
-      },
-      boxShadow: {
-        // カードの浮遊感（近距離の輪郭 + 遠距離のぼかし）
-        card: "0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px -12px rgba(24, 24, 27, 0.12)",
-        "card-hover": "0 2px 4px rgba(24, 24, 27, 0.05), 0 16px 32px -12px rgba(24, 24, 27, 0.18)",
+        // Appleのシステムフォント優先（SF Pro / ヒラギノ角ゴ）。他OSは各システムフォントへ
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Hiragino Sans",
+          "Segoe UI",
+          "Yu Gothic UI",
+          "sans-serif",
+        ],
       },
       borderRadius: {
-        card: "1.25rem", // 20px。ベントカードの標準角丸
+        card: "1.25rem", // 20px。iOSウィジェット風のカード角丸
+        cell: "0.75rem", // 12px。リストのインセットグループ用
       },
     },
   },

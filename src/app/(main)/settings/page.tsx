@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { Settings, Link2, Rss, KeyRound, UserRound } from "lucide-react";
+import { Link2, Rss, KeyRound, UserRound } from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "./SignOutButton";
@@ -21,10 +21,7 @@ export default async function SettingsPage() {
 
   return (
     <main>
-      <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-        <Settings className="h-5 w-5 text-accent" aria-hidden="true" />
-        設定
-      </h1>
+      <h1 className="large-title">設定</h1>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* アカウント */}
@@ -70,12 +67,12 @@ export default async function SettingsPage() {
               予定とメールがダッシュボードに表示されます（フェーズ2で実装予定）。
             </p>
           ) : (
-            <ul className="mt-3 divide-y divide-line/60">
+            <ul className="mt-3 divide-y divide-line">
               {data.googleAccounts.map((account) => (
                 <li key={account.id} className="flex items-center gap-3 py-2.5 text-sm">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: account.colorHex ?? "#4F46E5" }}
+                    style={{ backgroundColor: account.colorHex ?? "#007AFF" }}
                     aria-hidden="true"
                   />
                   <span className="font-semibold">{account.label}</span>
@@ -103,7 +100,7 @@ export default async function SettingsPage() {
           {data === null ? (
             <p className="mt-3 text-sm text-red-600">DBに接続できませんでした。</p>
           ) : (
-            <ul className="mt-3 divide-y divide-line/60">
+            <ul className="mt-3 divide-y divide-line">
               {data.sources.map((source) => (
                 <li key={source.id} className="flex items-center gap-3 py-2.5 text-sm">
                   <a

@@ -1,5 +1,5 @@
 import type { Memo } from "@prisma/client";
-import { Pin, StickyNote, Trash2, Pencil, Plus } from "lucide-react";
+import { Pin, Trash2, Pencil, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatJstDateTime } from "@/lib/datetime";
 import { CopyButton } from "@/components/CopyButton";
@@ -21,10 +21,7 @@ export default async function MemosPage() {
 
   return (
     <main>
-      <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-        <StickyNote className="h-5 w-5 text-accent" aria-hidden="true" />
-        メモ
-      </h1>
+      <h1 className="large-title">メモ</h1>
 
       {data === null ? (
         <p className="card mt-6 p-4 text-sm text-red-600">DBに接続できませんでした。</p>
@@ -93,7 +90,7 @@ export default async function MemosPage() {
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 新しいよく使うメモ
               </summary>
-              <AutoResetForm action={createMemo} className="border-t border-line/60 p-4">
+              <AutoResetForm action={createMemo} className="border-t border-line p-4">
                 <input type="hidden" name="kind" value="pinned" />
                 <label htmlFor="pinned-title" className="text-xs font-semibold text-muted">
                   タイトル

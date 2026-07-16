@@ -3,25 +3,29 @@
 @tailwind utilities;
 
 /*
- * デザイントークンの実体（単一定義元）
+ * デザイントークンの実体（単一定義元）— iOSネイティブ調
+ * iPhoneの「設定」アプリ・ホーム画面ウィジェットの質感に合わせる。
  * 色を変えたいときはここだけを編集する。Tailwind側（tailwind.config.ts）は名前の割り当てのみ。
  */
 :root {
-  --bg: #f4f4f6; /* ページ背景（薄いクールグレー） */
+  --bg: #f2f2f7; /* ページ背景（iOS systemGroupedBackground） */
   --card: #ffffff; /* カード背景 */
-  --ink: #18181b; /* 本文（zinc-900相当） */
-  --muted: #52525b; /* 補助テキスト（zinc-600。白地でコントラスト比7:1確保） */
-  --faint: #a1a1aa; /* 最弱テキスト（装飾ラベル用。本文には使わない） */
-  --line: #e4e4e7; /* 枠線 */
-  --accent: #4f46e5; /* アクセント（indigo-600。白地で4.5:1以上） */
-  --accent-soft: #eef2ff; /* アクセントの淡色背景（indigo-50） */
+  --ink: #000000; /* 本文（iOS label） */
+  --muted: rgba(60, 60, 67, 0.6); /* 補助テキスト（iOS secondaryLabel） */
+  --faint: rgba(60, 60, 67, 0.3); /* 最弱テキスト（iOS tertiaryLabel。装飾用） */
+  --line: rgba(60, 60, 67, 0.15); /* ヘアライン区切り（iOS separator相当） */
+  --accent: #007aff; /* アクセント（iOS systemBlue） */
+  --accent-strong: #0066d6; /* 押下・ホバー時の濃いブルー */
+  --accent-soft: rgba(0, 122, 255, 0.12); /* ブルーの淡色背景 */
+  --fill: rgba(120, 120, 128, 0.12); /* 入力欄・グレーボタンの塗り（iOS tertiaryFill） */
 }
 
 @layer base {
   body {
     @apply bg-bg text-ink;
-    /* 日本語はNoto Sans JP、欧文はInter（next/fontがCSS変数で注入する） */
-    font-feature-settings: "palt"; /* 日本語の約物を詰めて組む */
+    /* Appleのシステムフォント。iPhone/MacではSF Pro＋ヒラギノ角ゴ＝ネイティブの文字になる */
+    font-feature-settings: "palt";
+    -webkit-font-smoothing: antialiased;
   }
 
   /* キーボード操作時のフォーカスリングを全要素で統一 */
@@ -42,38 +46,48 @@
 }
 
 @layer components {
-  /* ベントカード：白地・大きめ角丸・淡い影。ダッシュボードの基本パーツ */
+  /* ベントカード：iOSホーム画面ウィジェット風（枠線・影なしの白、角丸大きめ） */
   .card {
-    @apply rounded-card border border-line bg-card shadow-card;
+    @apply rounded-card bg-card;
   }
 
-  /* リンクになっているカード（ホバーで浮く） */
+  /* リンクになっているカード（押すと沈む＝iOSのハイライト挙動） */
   .card-link {
-    @apply card cursor-pointer transition-shadow duration-200 hover:shadow-card-hover;
+    @apply card cursor-pointer transition-opacity duration-150 active:opacity-60;
   }
 
-  /* カード内の見出し行（アイコン＋タイトル） */
+  /* カード内の見出し行（ウィジェットのヘッダー風：小さめ・グレー） */
   .card-title {
-    @apply flex items-center gap-2 text-sm font-semibold text-ink;
+    @apply flex items-center gap-1.5 text-[13px] font-semibold text-muted;
   }
 
   /* チップ／タグ（ジャンル表示など） */
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
 
-  /* 主要ボタン（Indigo塗り） */
+  /* 主要ボタン（iOSの塗りボタン：ブルー・丸み強め） */
   .btn-primary {
-    @apply inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-indigo-700 disabled:cursor-default disabled:opacity-50;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent px-5 py-2 text-[15px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 active:opacity-60 disabled:cursor-default disabled:opacity-40;
   }
 
-  /* 補助ボタン（白地＋枠線） */
+  /* 補助ボタン（iOSのグレー塗り＋ブルー文字） */
   .btn-ghost {
-    @apply inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-1.5 text-xs font-semibold text-ink transition-colors duration-200 hover:bg-bg disabled:cursor-default disabled:opacity-40;
+    @apply inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full bg-fill px-3.5 py-1.5 text-[13px] font-semibold text-accent transition-opacity duration-150 hover:opacity-80 active:opacity-60 disabled:cursor-default disabled:opacity-40 disabled:text-muted;
   }
 
-  /* テキスト入力（1行・複数行 共通） */
+  /* テキスト入力（iOSの検索フィールド風：グレー塗り・枠線なし） */
   .input {
-    @apply w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none;
+    @apply w-full rounded-[10px] border-0 bg-fill px-3.5 py-2.5 text-[15px] text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.45)];
+  }
+
+  /* ページ見出し（iOSのラージタイトル） */
+  .large-title {
+    @apply text-[28px] font-bold tracking-tight;
+  }
+
+  /* すりガラスのバー（ヘッダー・タブバー共通） */
+  .glass-bar {
+    @apply border-line bg-[rgba(249,249,249,0.85)] backdrop-blur-xl;
   }
 }

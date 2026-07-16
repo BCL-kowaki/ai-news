@@ -30,19 +30,23 @@ export default async function NewsCategoryPage({
 
   return (
     <main>
+      {/* iOSの「戻る」リンク風 */}
       <Link
         href="/news"
-        className="inline-flex items-center gap-1 text-sm font-semibold text-muted transition-colors duration-200 hover:text-ink"
+        className="inline-flex items-center gap-0.5 text-[15px] font-normal text-accent active:opacity-60"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        ニュース一覧
+        ニュース
       </Link>
 
-      <h1 className="mt-3 flex items-center gap-2.5 text-xl font-bold tracking-tight">
-        <span className="chip text-sm" style={{ backgroundColor: style.bg, color: style.fg }}>
-          {category}
+      <h1 className="large-title mt-2 flex items-center gap-2.5">
+        {category}
+        <span
+          className="chip text-sm"
+          style={{ backgroundColor: style.bg, color: style.fg }}
+        >
+          {articles?.length ?? 0} 件
         </span>
-        <span className="text-sm font-medium text-muted">{articles?.length ?? 0} 件</span>
       </h1>
 
       {articles === null ? (

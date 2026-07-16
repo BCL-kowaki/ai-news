@@ -47,12 +47,10 @@ export default async function DashboardPage() {
 
   return (
     <main>
-      {/* あいさつヘッダー */}
+      {/* あいさつヘッダー（iOSラージタイトル風） */}
       <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-faint">
-          {formatJstFullDate(now)}
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+        <p className="text-[13px] font-semibold text-muted">{formatJstFullDate(now)}</p>
+        <h1 className="large-title mt-0.5">
           {greeting(now)}
           {firstName(session?.user?.name) && `、${firstName(session?.user?.name)}さん`}
         </h1>
@@ -70,7 +68,7 @@ export default async function DashboardPage() {
               {data.briefing.content}
             </p>
           ) : (
-            <div className="mt-3 rounded-xl bg-accent-soft/60 p-4">
+            <div className="mt-3 rounded-xl bg-accent-soft p-4">
               <p className="text-sm leading-relaxed text-muted">
                 毎朝7時、予定・メール・タスク・ニュースをAIがまとめてここに表示します。
                 <span className="mt-1 block text-xs text-faint">（フェーズ3で有効になります）</span>
@@ -139,7 +137,7 @@ export default async function DashboardPage() {
           ) : data.tasks.length === 0 ? (
             <p className="mt-3 text-sm text-muted">未完了のタスクはありません。</p>
           ) : (
-            <ul className="mt-2 divide-y divide-line/60">
+            <ul className="mt-2 divide-y divide-line">
               {data.tasks.map((task) => (
                 <TaskItem key={task.id} task={task} />
               ))}
@@ -172,7 +170,7 @@ export default async function DashboardPage() {
             </div>
           </AutoResetForm>
           {data && data.quickMemos.length > 0 && (
-            <ul className="mt-3 space-y-2 border-t border-line/60 pt-3">
+            <ul className="mt-3 space-y-2 border-t border-line pt-3">
               {data.quickMemos.map((memo) => (
                 <li key={memo.id} className="truncate text-xs text-muted">
                   {memo.body}
@@ -206,7 +204,7 @@ export default async function DashboardPage() {
               定型文・住所・番号などを登録しておくと、ワンタップでコピーできます。
             </p>
           ) : (
-            <ul className="mt-2 divide-y divide-line/60">
+            <ul className="mt-2 divide-y divide-line">
               {data.pinnedMemos.map((memo) => (
                 <li key={memo.id} className="py-2">
                   <Link href="/memos" className="block">
@@ -237,7 +235,7 @@ export default async function DashboardPage() {
           ) : data.articles.length === 0 ? (
             <p className="mt-3 text-sm text-muted">記事はまだありません（毎時自動収集）。</p>
           ) : (
-            <ul className="mt-2 divide-y divide-line/60">
+            <ul className="mt-2 divide-y divide-line">
               {data.articles.map((article) => (
                 <li key={article.id} className="py-2.5">
                   <a
