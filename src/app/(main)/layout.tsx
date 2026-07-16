@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { DesktopNav, MobileTabBar } from "@/components/Nav";
 
@@ -20,9 +20,16 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <div className="min-h-dvh">
       <header className="glass-bar sticky top-0 z-20 border-b">
         <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-5">
-          <Link href="/" className="flex items-center gap-1.5 active:opacity-60">
-            <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
-            <span className="text-[17px] font-semibold tracking-tight">AI秘書</span>
+          <Link href="/" className="flex items-center active:opacity-60">
+            {/* SERAワードマーク（白地ロゴ）。mix-blend-multiplyで白を透過させ、すりガラスに馴染ませる */}
+            <Image
+              src="/logo-wordmark.png"
+              alt="SERA — AI Secretary Agent"
+              width={880}
+              height={330}
+              priority
+              className="h-7 w-auto mix-blend-multiply"
+            />
           </Link>
           <DesktopNav />
         </div>

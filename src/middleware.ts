@@ -10,6 +10,7 @@ import { withAuth } from "next-auth/middleware";
  * - /api/auth  … NextAuth自身（ここを守るとログインできなくなる）
  * - /api/cron  … GitHub Actionsが叩く収集ジョブ（CRON_SECRETのBearer認証で別途保護済み）
  * - /login     … ログイン画面
+ * - /icon, /apple-icon … favicon・ホーム画面アイコン（Next.jsは拡張子なしのURLで配信する）
  * - /_next, ドットを含むパス … ビルド資産・画像・マニフェスト等の静的ファイル
  */
 export default withAuth({
@@ -17,5 +18,5 @@ export default withAuth({
 });
 
 export const config = {
-  matcher: ["/((?!api/auth|api/cron|login|_next|.*\\..*).*)"],
+  matcher: ["/((?!api/auth|api/cron|login|icon|apple-icon|_next|.*\\..*).*)"],
 };
