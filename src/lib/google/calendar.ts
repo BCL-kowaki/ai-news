@@ -134,12 +134,16 @@ export async function listUpcomingEvents(
   days: number,
   now: Date = new Date(),
 ): Promise<TodayEvent[]> {
-  const accounts = await listGoogleAccounts();
-  if (accounts.length === 0) return [];
-
   const todayKey = getJstDateKey(now);
   const timeMin = new Date(`${todayKey}T00:00:00+09:00`);
   const timeMax = new Date(timeMin.getTime() + days * 24 * 60 * 60 * 1000);
+  return listEventsBetween(timeMin, timeMax);
+}
+
+/** 全連携アカウントから任意期間の予定を集めて開始時刻順に返す（過去の月表示にも使う） */
+export async function listEventsBetween(timeMin: Date, timeMax: Date): Promise<TodayEvent[]> {
+  const accounts = await listGoogleAccounts();
+  if (accounts.length === 0) return [];
 
   // アカウント×カレンダーを並列取得。個々の失敗はnullにして握りつぶす
   const perCalendar = accounts.flatMap((account) =>
@@ -149,8 +153,7 @@ export async function listUpcomingEvents(
         timeMax: timeMax.toISOString(),
         singleEvents: "true", // 繰り返し予定を展開する
         orderBy: "startTime",
-        maxResults: String(Math.min(20 * days, 250)), // 期間に応じて件数を確保
-
+        maxResults: "250", // 月表示にも耐える上限
         timeZone: TIMEZONE,
         fields: "summary,items(id,summary,status,start,end)",
       });
