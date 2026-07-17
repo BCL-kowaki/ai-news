@@ -35,6 +35,24 @@
     outline-offset: 2px;
   }
 
+  /*
+   * iOS Safariは date / time 入力の幅指定を無視して固有サイズで描画し、
+   * カードからはみ出すことがある。appearanceを外して普通のテキスト入力と同じ挙動にする。
+   */
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+    text-align: left;
+  }
+  /* appearanceを外すとiOSで高さが潰れることがあるため、最低高さを揃える */
+  input[type="date"],
+  input[type="time"] {
+    min-height: 2.75rem;
+  }
+
   /* 動きを減らす設定のユーザーにはアニメーションを止める */
   @media (prefers-reduced-motion: reduce) {
     *,
