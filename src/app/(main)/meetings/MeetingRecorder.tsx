@@ -36,6 +36,8 @@ export function MeetingRecorder() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [title, setTitle] = useState("");
+  const [meetingDate, setMeetingDate] = useState(""); // 会議の日付（未入力なら当日）
+  const [meetingTime, setMeetingTime] = useState(""); // 開始時刻（未入力なら現在時刻）
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +99,20 @@ export function MeetingRecorder() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
   }
 
+  /**
+   * 会議の日時を決める。
+   * 日付・時刻が入力されていればそれを優先し、未入力の部分は fallback（当日・現在時刻）を使う。
+   */
+  function resolveRecordedAt(fallback: Date): Date {
+    if (!meetingDate && !meetingTime) return fallback;
+    // sv-SE ロケールは "YYYY-MM-DD" / "HH:MM" 形式になる（組み立てに都合が良い）
+    const dateStr = meetingDate || fallback.toLocaleDateString("sv-SE");
+    const timeStr =
+      meetingTime || fallback.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+    const combined = new Date(`${dateStr}T${timeStr}:00`);
+    return Number.isNaN(combined.getTime()) ? fallback : combined;
+  }
+
   /** 録音停止後：Blobへアップロードして会議として登録 */
   async function finishRecording() {
     const mime = recorderRef.current?.mimeType || "audio/webm";
@@ -104,13 +120,13 @@ export function MeetingRecorder() {
     const startedAt = startedAtRef.current ?? new Date();
     const durationSec = Math.round((Date.now() - startedAt.getTime()) / 1000);
     const ext = mime.includes("mp4") ? "m4a" : "webm";
-    await saveMeeting(blob, `recording.${ext}`, mime, startedAt, durationSec);
+    await saveMeeting(blob, `recording.${ext}`, mime, resolveRecordedAt(startedAt), durationSec);
   }
 
   /** 音声ファイルの取り込み */
   async function handleFile(file: File) {
     setError(null);
-    await saveMeeting(file, file.name, file.type || "audio/mpeg", new Date(), null);
+    await saveMeeting(file, file.name, file.type || "audio/mpeg", resolveRecordedAt(new Date()), null);
   }
 
   /** 共通：Blobへアップロード → 会議レコード作成 → 詳細ページへ */
@@ -156,18 +172,48 @@ export function MeetingRecorder() {
 
   return (
     <section className="card p-5">
-      <label htmlFor="meeting-title" className="text-xs font-semibold text-muted">
-        会議名（あとで変更不可・空なら「会議」）
-      </label>
-      <input
-        id="meeting-title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        maxLength={100}
-        placeholder="例：定例ミーティング"
-        className="input mt-1"
-        disabled={phase !== "idle"}
-      />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex-1">
+          <label htmlFor="meeting-title" className="block text-xs font-semibold text-muted">
+            会議名（空なら「会議」）
+          </label>
+          <input
+            id="meeting-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={100}
+            placeholder="例：定例ミーティング"
+            className="input mt-1"
+            disabled={phase !== "idle"}
+          />
+        </div>
+        <div>
+          <label htmlFor="meeting-date" className="block text-xs font-semibold text-muted">
+            日付（未入力なら今日）
+          </label>
+          <input
+            id="meeting-date"
+            type="date"
+            value={meetingDate}
+            onChange={(e) => setMeetingDate(e.target.value)}
+            className="input mt-1 sm:w-44"
+            disabled={phase !== "idle"}
+          />
+        </div>
+        <div>
+          <label htmlFor="meeting-time" className="block text-xs font-semibold text-muted">
+            開始時刻（任意）
+          </label>
+          <input
+            id="meeting-time"
+            type="time"
+            value={meetingTime}
+            onChange={(e) => setMeetingTime(e.target.value)}
+            className="input mt-1 sm:w-32"
+            disabled={phase !== "idle"}
+          />
+        </div>
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {phase === "recording" ? (
@@ -230,16 +276,32 @@ export function MeetingRecorder() {
           文字起こしテキストを貼り付けて取り込む
         </summary>
         <form action={createMeetingFromTranscript} className="border-t-2 border-dashed border-line p-4">
-          <label htmlFor="paste-title" className="text-xs font-bold text-muted">
-            会議名
-          </label>
-          <input
-            id="paste-title"
-            name="title"
-            maxLength={100}
-            placeholder="例：定例ミーティング"
-            className="input mt-1"
-          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex-1">
+              <label htmlFor="paste-title" className="block text-xs font-bold text-muted">
+                会議名
+              </label>
+              <input
+                id="paste-title"
+                name="title"
+                maxLength={100}
+                placeholder="例：定例ミーティング"
+                className="input mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="paste-date" className="block text-xs font-bold text-muted">
+                日付（未入力なら今日）
+              </label>
+              <input id="paste-date" name="date" type="date" className="input mt-1 sm:w-44" />
+            </div>
+            <div>
+              <label htmlFor="paste-time" className="block text-xs font-bold text-muted">
+                開始時刻（任意）
+              </label>
+              <input id="paste-time" name="time" type="time" className="input mt-1 sm:w-32" />
+            </div>
+          </div>
           <label htmlFor="paste-transcript" className="mt-3 block text-xs font-bold text-muted">
             文字起こし・議事メモの本文
           </label>

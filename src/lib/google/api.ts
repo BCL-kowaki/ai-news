@@ -117,6 +117,22 @@ export async function googleApiPostJson<T>(
   return { ok: true, data: (await res.json()) as T };
 }
 
+/** 認証付きでGoogle APIへDELETEを送る（カレンダー予定の取り消し用）。成功=true */
+export async function googleApiDelete(account: GoogleAccount, url: string): Promise<boolean> {
+  const token = await getAccessToken(account);
+  if (!token) return false;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  // 204=削除成功 / 404・410=既に無い（成功扱い）
+  if (res.status === 204 || res.status === 404 || res.status === 410) return true;
+  console.error(`[Google API] DELETE ${res.status} ${account.email} ${url.split("?")[0]}`);
+  return false;
+}
+
 /** 連携済みアカウント一覧（作成順）。DB障害時は空配列 */
 export async function listGoogleAccounts(): Promise<GoogleAccount[]> {
   try {

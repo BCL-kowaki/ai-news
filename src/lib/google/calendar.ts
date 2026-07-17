@@ -1,7 +1,7 @@
 import type { GoogleAccount } from "@prisma/client";
 import { TIMEZONE } from "@/lib/config";
 import { getJstDateKey } from "@/lib/datetime";
-import { googleApiGetJson, googleApiPostJson, listGoogleAccounts } from "./api";
+import { googleApiDelete, googleApiGetJson, googleApiPostJson, listGoogleAccounts } from "./api";
 
 /**
  * Googleカレンダーの取得（読み取り専用）
@@ -89,6 +89,17 @@ export async function createCalendarEvent(
     };
   }
   return { ok: true, eventId: result.data.id };
+}
+
+/** メインカレンダーから予定を削除する（会議削除時の後始末用）。成功=true */
+export async function deleteCalendarEvent(
+  account: GoogleAccount,
+  eventId: string,
+): Promise<boolean> {
+  return googleApiDelete(
+    account,
+    `${BASE}/calendars/primary/events/${encodeURIComponent(eventId)}`,
+  );
 }
 
 /** アカウントが購読しているカレンダーの一覧（設定画面の選択UI用） */

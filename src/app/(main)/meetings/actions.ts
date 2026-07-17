@@ -6,7 +6,11 @@ import { del } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
-import { createCalendarEvent, findWritableAccount } from "@/lib/google/calendar";
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  findWritableAccount,
+} from "@/lib/google/calendar";
 
 /**
  * 会議のサーバーアクション（作成・削除・カレンダー登録）
@@ -81,10 +85,28 @@ export async function createMeetingFromTranscript(formData: FormData): Promise<v
 
   const title = String(formData.get("title") ?? "").trim().slice(0, 100) || "会議";
 
+  // 日付・時刻（任意）。未入力の部分は「今日・現在時刻」（JST）で補う
+  const dateRaw = String(formData.get("date") ?? "").trim();
+  const timeRaw = String(formData.get("time") ?? "").trim();
+  let recordedAt = new Date();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw) || /^\d{2}:\d{2}$/.test(timeRaw)) {
+    const jstNow = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+      dateStyle: "short",
+      timeStyle: "short",
+    })
+      .format(recordedAt)
+      .split(" "); // ["YYYY-MM-DD", "HH:MM"]
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : jstNow[0];
+    const time = /^\d{2}:\d{2}$/.test(timeRaw) ? timeRaw : jstNow[1];
+    const combined = new Date(`${date}T${time}:00+09:00`);
+    if (!Number.isNaN(combined.getTime())) recordedAt = combined;
+  }
+
   const meeting = await prisma.meeting.create({
     data: {
       title,
-      recordedAt: new Date(),
+      recordedAt,
       transcript: transcript.slice(0, 200_000), // 念のための上限（約3時間の会議でも収まる）
       status: "transcribed", // 文字起こし済みとして登録（すぐレポート生成できる）
     },
@@ -154,6 +176,16 @@ export async function deleteMeeting(formData: FormData): Promise<void> {
     await del(meeting.audioUrl).catch((e) => {
       console.error("[会議] 音声ファイルの削除に失敗:", e);
     });
+  }
+
+  // カレンダーに自動登録した予定も一緒に消す（登録済みの場合のみ。失敗しても続行）
+  if (meeting.calendarEventId && meeting.calendarAccountEmail) {
+    const account = await prisma.googleAccount
+      .findUnique({ where: { email: meeting.calendarAccountEmail } })
+      .catch(() => null);
+    if (account) {
+      await deleteCalendarEvent(account, meeting.calendarEventId).catch(() => {});
+    }
   }
   await prisma.meeting.delete({ where: { id } }).catch(() => {});
   revalidateMeetingViews();
