@@ -29,6 +29,12 @@ export type TodayEvent = {
   accountEmail: string;
   colorHex: string;
   calendarName: string;
+  /**
+   * 画面に出す出どころラベル。
+   * 自分のメインカレンダー → アカウントの表示名（"会社" / "個人"）
+   * 共有カレンダー（家族共用など） → カレンダー名
+   */
+  sourceLabel: string;
 };
 
 type CalendarListResponse = {
@@ -94,6 +100,11 @@ export async function listTodayEvents(now: Date = new Date()): Promise<TodayEven
         `${BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
       );
       if (!json) return [];
+
+      // 自分のメインカレンダーか（"primary" 指定 or カレンダーID=アカウントのメール）
+      const isPrimary = calendarId === "primary" || calendarId === account.email;
+      const calendarName = json.summary ?? calendarId;
+
       return (json.items ?? [])
         .filter((e) => e.status !== "cancelled")
         .map((e): TodayEvent => {
@@ -115,7 +126,9 @@ export async function listTodayEvents(now: Date = new Date()): Promise<TodayEven
             accountLabel: account.label,
             accountEmail: account.email,
             colorHex: account.colorHex ?? "#007AFF",
-            calendarName: json.summary ?? calendarId,
+            calendarName,
+            // メイン=アカウント表示名（会社/個人）、共有=カレンダー名（家族共用など）
+            sourceLabel: isPrimary ? account.label : calendarName,
           };
         });
     }),

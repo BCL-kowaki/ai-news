@@ -388,19 +388,20 @@ function firstName(name: string | null | undefined): string | null {
   return name.split(/\s+/)[0] ?? null;
 }
 
-/** 予定1行（時刻＋アカウント色ドット＋タイトル） */
+/** 予定1行（時刻＋出どころチップ＋タイトル）。チップはアカウント色の淡色背景 */
 function EventRow({ event }: { event: TodayEvent }) {
   return (
     <li className="flex items-center gap-2.5 py-2 text-sm">
       <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
         {event.allDay ? "終日" : formatJstTime(event.start)}
       </span>
+      {/* 出どころ（会社/個人/家族カレンダー名）。色はアカウント色、背景はその10%透過 */}
       <span
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: event.colorHex }}
-        aria-hidden="true"
-        title={event.accountLabel}
-      />
+        className="chip shrink-0"
+        style={{ backgroundColor: `${event.colorHex}1A`, color: event.colorHex }}
+      >
+        {event.sourceLabel}
+      </span>
       <span className="min-w-0 flex-1 truncate">{event.title}</span>
       {!event.allDay && event.end && (
         <span className="shrink-0 text-xs text-faint">〜{formatJstTime(event.end)}</span>
