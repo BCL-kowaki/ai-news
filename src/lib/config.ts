@@ -77,3 +77,18 @@ export const GOOGLE_ACCOUNT_COLORS = [
 
 /** ニュース一覧（/news）で1ページに表示する件数 */
 export const NEWS_LIST_COUNT = 30;
+
+/** 会議の処理状態 → 表示ラベル・チップ配色（単一定義元） */
+export const MEETING_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
+  recorded: { label: "未処理", bg: "#F4F4F5", fg: "#52525B" },
+  transcribing: { label: "文字起こし中…", bg: "#FFFBEB", fg: "#B45309" },
+  transcribed: { label: "文字起こし済み", bg: "#ECFEFF", fg: "#0E7490" },
+  summarizing: { label: "レポート生成中…", bg: "#FFFBEB", fg: "#B45309" },
+  done: { label: "レポート済み", bg: "#F0FDF4", fg: "#15803D" },
+  error: { label: "エラー", bg: "#FEF2F2", fg: "#DC2626" },
+};
+
+/** 会議状態の表示定義を返す（未知の状態はグレー） */
+export function meetingStatusStyle(status: string) {
+  return MEETING_STATUS[status] ?? MEETING_STATUS.recorded;
+}

@@ -99,6 +99,27 @@ model Memo {
   @@index([kind, sortOrder])
 }
 
+/// 会議の録音・文字起こし・レポート要約
+model Meeting {
+  id                   String   @id @default(cuid())
+  title                String
+  recordedAt           DateTime // 録音開始日時（アップロードの場合は取り込み日時）
+  durationSec          Int? // 録音の長さ（秒）。取得できた場合のみ
+  audioUrl             String // Vercel Blob上の音声ファイルURL
+  audioMime            String? // audio/webm, audio/mp4 など
+  audioBytes           Int?
+  status               String   @default("recorded") // recorded / transcribing / transcribed / summarizing / done / error
+  transcript           String? // 文字起こし全文（Gemini）
+  summaryMd            String? // レポート要約（Claude Haiku・Markdown）
+  errorMsg             String? // 直近の処理エラー（画面表示用）
+  calendarEventId      String? // Googleカレンダーに登録した予定のID（登録済みの印）
+  calendarAccountEmail String? // どのアカウントのカレンダーに登録したか
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([recordedAt])
+}
+
 /// AIブリーフィング（朝の秘書メモ）。フェーズ3のcronが1日1件生成する。
 model Briefing {
   id        String   @id @default(cuid())

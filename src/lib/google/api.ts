@@ -86,6 +86,37 @@ export async function googleApiGetJson<T>(
   return (await res.json()) as T;
 }
 
+/**
+ * 認証付きでGoogle APIへPOSTしてJSONを返す（カレンダー予定の作成などの書き込み用）。
+ * 失敗時は null ではなくエラー内容を返す（画面で「再連携が必要」等を出し分けるため）。
+ */
+export async function googleApiPostJson<T>(
+  account: GoogleAccount,
+  url: string,
+  payload: unknown,
+): Promise<{ ok: true; data: T } | { ok: false; status: number; error: string }> {
+  const token = await getAccessToken(account);
+  if (!token) {
+    return { ok: false, status: 401, error: "アクセストークンを取得できません（要再連携）" };
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(
+      `[Google API] POST ${res.status} ${account.email} ${url.split("?")[0]}: ${body.slice(0, 200)}`,
+    );
+    return { ok: false, status: res.status, error: body.slice(0, 200) };
+  }
+  return { ok: true, data: (await res.json()) as T };
+}
+
 /** 連携済みアカウント一覧（作成順）。DB障害時は空配列 */
 export async function listGoogleAccounts(): Promise<GoogleAccount[]> {
   try {

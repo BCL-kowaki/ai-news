@@ -11,11 +11,16 @@ const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const USERINFO_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo";
 
-/** 連携で要求するスコープ（読み取り専用のみ。書き込み権限は持たない） */
+/**
+ * 連携で要求するスコープ。
+ * Gmailは読み取り専用。カレンダーは閲覧＋予定の作成（会議機能の自動登録に使用）。
+ * ※ calendar.events を後から追加したため、既存の連携アカウントは「再連携」で権限を追加する必要がある。
+ */
 export const GOOGLE_CONNECT_SCOPES = [
   "openid",
   "email",
   "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.events", // 会議の予定を書き込む
   "https://www.googleapis.com/auth/gmail.readonly",
 ];
 

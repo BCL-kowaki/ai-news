@@ -1,7 +1,7 @@
 import type { GoogleAccount } from "@prisma/client";
 import { TIMEZONE } from "@/lib/config";
 import { getJstDateKey } from "@/lib/datetime";
-import { googleApiGetJson, listGoogleAccounts } from "./api";
+import { googleApiGetJson, googleApiPostJson, listGoogleAccounts } from "./api";
 
 /**
  * Googleカレンダーの取得（読み取り専用）
@@ -51,6 +51,45 @@ type EventsResponse = {
     end?: { date?: string; dateTime?: string };
   }[];
 };
+
+/** 予定の書き込み権限（calendar.events）を持つアカウントを返す。無ければ null */
+export async function findWritableAccount(): Promise<GoogleAccount | null> {
+  const accounts = await listGoogleAccounts();
+  return (
+    accounts.find(
+      (a) => a.status === "active" && a.scopes.includes("auth/calendar.events"),
+    ) ?? null
+  );
+}
+
+/**
+ * メインカレンダーに予定を作成する（会議機能の自動登録用）。
+ * 成功時はイベントIDを返す。権限不足（403）は「要再連携」として呼び出し側で案内する。
+ */
+export async function createCalendarEvent(
+  account: GoogleAccount,
+  params: { title: string; description?: string; start: Date; end: Date },
+): Promise<{ ok: true; eventId: string } | { ok: false; needsRelink: boolean; error: string }> {
+  const result = await googleApiPostJson<{ id: string }>(
+    account,
+    `${BASE}/calendars/primary/events`,
+    {
+      summary: params.title,
+      description: params.description ?? "",
+      start: { dateTime: params.start.toISOString(), timeZone: TIMEZONE },
+      end: { dateTime: params.end.toISOString(), timeZone: TIMEZONE },
+    },
+  );
+  if (!result.ok) {
+    return {
+      ok: false,
+      // 401/403 = 権限不足かトークン失効 → 再連携すれば直る
+      needsRelink: result.status === 401 || result.status === 403,
+      error: result.error,
+    };
+  }
+  return { ok: true, eventId: result.data.id };
+}
 
 /** アカウントが購読しているカレンダーの一覧（設定画面の選択UI用） */
 export async function listCalendars(account: GoogleAccount): Promise<CalendarInfo[] | null> {

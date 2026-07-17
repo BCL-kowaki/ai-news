@@ -90,4 +90,50 @@
   .glass-bar {
     @apply border-line bg-[rgba(249,249,249,0.85)] backdrop-blur-xl;
   }
+
+  /* 会議レポートなどのMarkdown整形表示（見出し・表・箇条書き） */
+  .report {
+    @apply text-sm leading-relaxed text-ink;
+  }
+  .report h1 {
+    @apply mb-3 mt-1 text-xl font-bold tracking-tight;
+  }
+  .report h2 {
+    @apply mb-2 mt-6 border-b border-line pb-1.5 text-base font-bold;
+  }
+  .report h3 {
+    @apply mb-1.5 mt-4 text-sm font-bold;
+  }
+  .report p {
+    @apply my-2;
+  }
+  .report ul,
+  .report ol {
+    @apply my-2 space-y-1 pl-5;
+  }
+  .report ul {
+    @apply list-disc;
+  }
+  .report ol {
+    @apply list-decimal;
+  }
+  .report strong {
+    @apply font-bold;
+  }
+  /* 表：iOS調のヘアライン罫線＋ヘッダー淡色 */
+  .report table {
+    @apply my-3 w-full border-collapse overflow-hidden rounded-xl text-[13px];
+  }
+  .report th {
+    @apply border border-line bg-bg px-3 py-2 text-left font-semibold;
+  }
+  .report td {
+    @apply border border-line px-3 py-2 align-top;
+  }
+  .report blockquote {
+    @apply my-2 border-l-2 border-accent pl-3 text-muted;
+  }
+  .report code {
+    @apply rounded bg-fill px-1 py-0.5 text-[12px];
+  }
 }

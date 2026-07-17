@@ -7,6 +7,7 @@ import {
   Newspaper,
   ListTodo,
   StickyNote,
+  Mic,
   Settings,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/news", label: "ニュース", icon: Newspaper },
   { href: "/tasks", label: "タスク", icon: ListTodo },
   { href: "/memos", label: "メモ", icon: StickyNote },
+  { href: "/meetings", label: "会議", icon: Mic },
   { href: "/settings", label: "設定", icon: Settings },
 ] as const;
 
