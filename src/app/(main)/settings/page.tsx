@@ -10,6 +10,7 @@ import {
   CalendarCog,
   Trash2,
   Pencil,
+  Bell,
 } from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,7 @@ import { isEncryptionConfigured } from "@/lib/crypto";
 import { isGoogleClientConfigured } from "@/lib/google/oauth";
 import { SubmitButton } from "@/components/SubmitButton";
 import { SignOutButton } from "./SignOutButton";
+import { PushSettings } from "./PushSettings";
 import { disconnectGoogleAccount, renameGoogleAccount } from "./google-actions";
 
 /**
@@ -93,6 +95,15 @@ export default async function SettingsPage({
           <p className="mt-3 text-xs leading-relaxed text-faint">
             キーはサーバーの環境変数で管理しています。この画面に値が表示されることはありません。
           </p>
+        </section>
+
+        {/* プッシュ通知 */}
+        <section className="card p-5 lg:col-span-2">
+          <h2 className="card-title">
+            <Bell className="h-4 w-4 text-accent" aria-hidden="true" />
+            プッシュ通知
+          </h2>
+          <PushSettings />
         </section>
 
         {/* Google連携 */}

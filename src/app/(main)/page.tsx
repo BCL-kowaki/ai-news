@@ -6,8 +6,6 @@ import {
   Sparkles,
   CalendarDays,
   ListTodo,
-  Zap,
-  Pin,
   Newspaper,
   Mail,
   ArrowRight,
@@ -18,8 +16,6 @@ import {
   CATEGORY_STYLE_FALLBACK,
   DASHBOARD_MAIL_COUNT,
   DASHBOARD_NEWS_COUNT,
-  DASHBOARD_PINNED_MEMO_COUNT,
-  DASHBOARD_QUICK_MEMO_COUNT,
   DASHBOARD_TASK_COUNT,
 } from "@/lib/config";
 import { formatJstDateTime, getJstDateKey } from "@/lib/datetime";
@@ -31,7 +27,6 @@ import { TaskItem } from "@/components/TaskItem";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AutoResetForm } from "@/components/AutoResetForm";
 import { createTask } from "./tasks/actions";
-import { createMemo } from "./memos/actions";
 import { GenerateBriefingButton } from "./GenerateBriefingButton";
 
 /**
@@ -39,11 +34,12 @@ import { GenerateBriefingButton } from "./GenerateBriefingButton";
  *
  * 1画面で「今日必要なもの」を一望する秘書デスク。
  * 各カードは独立して失敗できる（DB障害・未連携でも他のカードは生きる）。
+ * ※メモはタブ（/memos）に集約し、ここには置かない。
  *
  * グリッド構成（lg=4カラム）:
  *   [ブリーフィング 2] [今日の予定 2]
- *   [タスク 2]         [突発メモ 1] [よく使うメモ 1]
- *   [ニュース 3]                    [メール 1]
+ *   [タスク 2]         [メール 2（20件・スクロール）]
+ *   [ニュース 4]
  */
 
 export const dynamic = "force-dynamic";
@@ -179,82 +175,70 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* ④ 突発メモ */}
-        <section className="card p-5">
-          <h2 className="card-title">
-            <Zap className="h-4 w-4 text-accent" aria-hidden="true" />
-            突発メモ
-          </h2>
-          <AutoResetForm action={createMemo} className="mt-3">
-            <input type="hidden" name="kind" value="quick" />
-            <label htmlFor="dash-memo" className="sr-only">
-              突発メモ
-            </label>
-            <textarea
-              id="dash-memo"
-              name="body"
-              required
-              rows={3}
-              maxLength={5000}
-              placeholder="思いついたら即メモ…"
-              className="input resize-none"
-            />
-            <div className="mt-2 flex justify-end">
-              <SubmitButton pendingLabel="…">残す</SubmitButton>
-            </div>
-          </AutoResetForm>
-          {data && data.quickMemos.length > 0 && (
-            <ul className="mt-3 space-y-2 border-t border-line pt-3">
-              {data.quickMemos.map((memo) => (
-                <li key={memo.id} className="truncate text-xs text-muted">
-                  {memo.body}
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/memos"
-            className="mt-3 inline-block text-xs font-semibold text-muted hover:text-ink"
-          >
-            すべて見る
-          </Link>
-        </section>
-
-        {/* ⑤ よく使うメモ */}
-        <section className="card p-5">
+        {/* ④ メール（最新20件・スクロール表示） */}
+        <section className="card p-5 sm:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="card-title">
-              <Pin className="h-4 w-4 text-accent" aria-hidden="true" />
-              よく使うメモ
+              <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
+              メール
             </h2>
-            <Link href="/memos" className="text-xs font-semibold text-muted hover:text-ink">
-              管理
-            </Link>
+            {data && data.googleAccountCount > 0 && (
+              <Link href="/mail" className="text-xs font-semibold text-muted hover:text-ink">
+                すべて見る
+              </Link>
+            )}
           </div>
-          {data === null ? (
-            <p className="mt-3 text-sm text-red-600">DBに接続できませんでした。</p>
-          ) : data.pinnedMemos.length === 0 ? (
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              定型文・住所・番号などを登録しておくと、ワンタップでコピーできます。
-            </p>
+          {!data || data.googleAccountCount === 0 ? (
+            <div className="mt-3 rounded-xl bg-bg p-4">
+              <p className="text-sm leading-relaxed text-muted">
+                Gmail（会社・個人）を連携すると、最新のメールがここに表示されます。
+              </p>
+              <Link
+                href="/settings"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+              >
+                設定で連携する
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : data.mail.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">メールを取得できませんでした。</p>
           ) : (
-            <ul className="mt-2 divide-y divide-line">
-              {data.pinnedMemos.map((memo) => (
-                <li key={memo.id} className="py-2">
-                  <Link href="/memos" className="block">
-                    <span className="block truncate text-sm font-medium">
-                      {memo.title ?? "（無題）"}
+            <ul className="mt-2 max-h-[26rem] divide-y divide-line overflow-y-auto pr-1">
+              {data.mail.map((mail) => (
+                <li key={`${mail.accountEmail}:${mail.id}`} className="py-2">
+                  <a
+                    href={mail.gmailUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: mail.colorHex }}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                          mail.unread ? "font-semibold" : "font-normal text-muted"
+                        }`}
+                      >
+                        {mail.subject}
+                      </span>
                     </span>
-                    <span className="block truncate text-xs text-faint">{memo.body}</span>
-                  </Link>
+                    <span className="mt-0.5 block truncate pl-3 text-xs text-faint">
+                      {mail.from}・{formatJstDateTime(mail.date)}
+                    </span>
+                  </a>
                 </li>
               ))}
             </ul>
           )}
         </section>
 
-        {/* ⑥ ニュースダイジェスト */}
-        <section className="card p-5 sm:col-span-2 lg:col-span-3">
+        {/* ⑤ ニュースダイジェスト */}
+        <section className="card p-5 sm:col-span-2 lg:col-span-4">
           <div className="flex items-center justify-between">
             <h2 className="card-title">
               <Newspaper className="h-4 w-4 text-accent" aria-hidden="true" />
@@ -301,67 +285,6 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* ⑦ メール */}
-        <section className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="card-title">
-              <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
-              メール
-            </h2>
-            {data && data.googleAccountCount > 0 && (
-              <Link href="/mail" className="text-xs font-semibold text-muted hover:text-ink">
-                すべて見る
-              </Link>
-            )}
-          </div>
-          {!data || data.googleAccountCount === 0 ? (
-            <div className="mt-3 rounded-xl bg-bg p-4">
-              <p className="text-sm leading-relaxed text-muted">
-                Gmail（会社・個人）を連携すると、最新のメールがここに表示されます。
-              </p>
-              <Link
-                href="/settings"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
-              >
-                設定で連携する
-                <ArrowRight className="h-3 w-3" aria-hidden="true" />
-              </Link>
-            </div>
-          ) : data.mail.length === 0 ? (
-            <p className="mt-3 text-sm text-muted">メールを取得できませんでした。</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-line">
-              {data.mail.map((mail) => (
-                <li key={`${mail.accountEmail}:${mail.id}`} className="py-2">
-                  <a
-                    href={mail.gmailUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: mail.colorHex }}
-                        aria-hidden="true"
-                      />
-                      <span
-                        className={`min-w-0 flex-1 truncate text-sm ${
-                          mail.unread ? "font-semibold" : "font-normal text-muted"
-                        }`}
-                      >
-                        {mail.subject}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block truncate pl-3 text-xs text-faint">
-                      {mail.from}・{formatJstDateTime(mail.date)}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </main>
   );
@@ -407,8 +330,6 @@ async function loadDashboard() {
       briefing,
       tasks,
       openTaskCount,
-      quickMemos,
-      pinnedMemos,
       articles,
       googleAccounts,
       events,
@@ -425,16 +346,6 @@ async function loadDashboard() {
           take: DASHBOARD_TASK_COUNT,
         }),
         prisma.task.count({ where: { status: "open" } }),
-        prisma.memo.findMany({
-          where: { kind: "quick" },
-          orderBy: { createdAt: "desc" },
-          take: DASHBOARD_QUICK_MEMO_COUNT,
-        }),
-        prisma.memo.findMany({
-          where: { kind: "pinned" },
-          orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
-          take: DASHBOARD_PINNED_MEMO_COUNT,
-        }),
         prisma.article.findMany({
           orderBy: { publishedAt: "desc" },
           take: DASHBOARD_NEWS_COUNT,
@@ -446,7 +357,8 @@ async function loadDashboard() {
           console.error("[ダッシュボード] 予定の取得に失敗:", e);
           return [];
         }),
-        listAllRecentMail(DASHBOARD_MAIL_COUNT).catch((e): MailItem[] => {
+        // 各アカウント10件ずつ取得 → 新しい順に最大20件を表示
+        listAllRecentMail(10).catch((e): MailItem[] => {
           console.error("[ダッシュボード] メールの取得に失敗:", e);
           return [];
         }),
@@ -456,8 +368,6 @@ async function loadDashboard() {
       briefing,
       tasks,
       openTaskCount,
-      quickMemos,
-      pinnedMemos,
       googleAccountCount: googleAccounts.length,
       expiredAccounts: googleAccounts.filter((a) => a.status === "expired").map((a) => a.label),
       events,

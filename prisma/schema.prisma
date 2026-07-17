@@ -147,6 +147,15 @@ model Meeting {
   @@index([recordedAt])
 }
 
+/// プッシュ通知の購読先（ブラウザ/スマホごとに1件）。ブリーフィング完成時などに送る。
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique // プッシュサービスのURL（購読の実体）
+  p256dh    String // 暗号化用の公開鍵
+  auth      String // 認証シークレット
+  createdAt DateTime @default(now())
+}
+
 /// AIブリーフィング（朝の秘書メモ）。フェーズ3のcronが1日1件生成する。
 model Briefing {
   id        String   @id @default(cuid())

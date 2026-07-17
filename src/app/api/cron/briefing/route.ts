@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/auth";
 import { generateDailyBriefing } from "@/lib/briefing";
+import { sendPushToAll } from "@/lib/push";
 
 /**
  * 朝のブリーフィング生成ジョブ（毎朝7時JSTにGitHub Actionsが実行）
@@ -21,8 +22,17 @@ export async function GET(request: Request) {
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error }, { status: 500 });
   }
-  console.log("[ブリーフィング] 生成しました");
-  return NextResponse.json({ ok: true });
+
+  // 登録済みの端末へ「できました」を通知（冒頭を抜粋。失敗しても本処理は成功扱い）
+  const excerpt = (result.content ?? "").replace(/[#*\n]/g, " ").trim().slice(0, 90);
+  const sent = await sendPushToAll({
+    title: "今日のブリーフィングができました",
+    body: excerpt,
+    url: "/",
+  }).catch(() => 0);
+
+  console.log(`[ブリーフィング] 生成しました（通知 ${sent}件）`);
+  return NextResponse.json({ ok: true, pushed: sent });
 }
 
 // 手動テスト用にPOSTでも受け付ける

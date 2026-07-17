@@ -59,7 +59,10 @@ export const DASHBOARD_TASK_COUNT = 5; // タスクカード
 export const DASHBOARD_NEWS_COUNT = 6; // ニュースダイジェスト
 export const DASHBOARD_QUICK_MEMO_COUNT = 3; // 突発メモの直近表示
 export const DASHBOARD_PINNED_MEMO_COUNT = 4; // よく使うメモ
-export const DASHBOARD_MAIL_COUNT = 3; // メールカード（全アカウント横断）
+export const DASHBOARD_MAIL_COUNT = 20; // メールカード（全アカウント横断・スクロール表示）
+
+/** ブリーフィング生成に使う受信メールの件数（全アカウント合算の上限） */
+export const BRIEFING_MAIL_COUNT = 50;
 
 /** /mail ページで1アカウントあたり表示するメール件数 */
 export const MAIL_LIST_COUNT = 10;
