@@ -9,7 +9,8 @@
  * - それ以上 … Gemini Files APIへ一旦アップロードしてから参照（長時間会議向け）
  */
 
-const MODEL = "gemini-2.5-flash";
+// 「常に最新のFlash」を指す別名。固定名（gemini-2.5-flash等）は新規キーで使えなくなることがある
+const MODEL = "gemini-flash-latest";
 const BASE = "https://generativelanguage.googleapis.com";
 const INLINE_LIMIT_BYTES = 15 * 1024 * 1024;
 
