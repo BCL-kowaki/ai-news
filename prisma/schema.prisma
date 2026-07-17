@@ -39,6 +39,7 @@ model Article {
   url         String    @unique // 重複排除のキー
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）
+  favoritedAt DateTime? // お気に入りに追加した日時（null=お気に入りでない）
   fetchedAt   DateTime  @default(now())
   sentAt      DateTime?
 

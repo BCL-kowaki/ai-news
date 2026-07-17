@@ -23,6 +23,7 @@ import { prisma } from "@/lib/prisma";
 import { listTodayEvents, type TodayEvent } from "@/lib/google/calendar";
 import { listAllRecentMail, type MailItem } from "@/lib/google/gmail";
 import { EventRow } from "@/components/EventRow";
+import { MailLink } from "@/components/MailLink";
 import { TaskItem } from "@/components/TaskItem";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AutoResetForm } from "@/components/AutoResetForm";
@@ -207,10 +208,10 @@ export default async function DashboardPage() {
             <ul className="mt-2 max-h-[26rem] divide-y divide-line overflow-y-auto pr-1">
               {data.mail.map((mail) => (
                 <li key={`${mail.accountEmail}:${mail.id}`} className="py-2">
-                  <a
-                    href={mail.gmailUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <MailLink
+                    webUrl={mail.gmailUrl}
+                    threadId={mail.threadId}
+                    accountEmail={mail.accountEmail}
                     className="block"
                   >
                     <span className="flex items-center gap-1.5">
@@ -230,7 +231,7 @@ export default async function DashboardPage() {
                     <span className="mt-0.5 block truncate pl-3 text-xs text-faint">
                       {mail.from}・{formatJstDateTime(mail.date)}
                     </span>
-                  </a>
+                  </MailLink>
                 </li>
               ))}
             </ul>

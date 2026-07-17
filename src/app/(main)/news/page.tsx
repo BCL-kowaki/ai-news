@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { CATEGORIES, CATEGORY_STYLE_FALLBACK, NEWS_LIST_COUNT } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
@@ -7,26 +8,43 @@ import { ArticleTable, type ArticleRow } from "@/components/ArticleTable";
 /**
  * ニュース一覧ページ（/news）
  * ジャンルのチップ（件数つき）＋全ジャンル横断の最新記事一覧。
+ * ?filter=fav でお気に入り（★を付けた記事）だけを表示する。
  */
 
 export const dynamic = "force-dynamic";
 
-export default async function NewsPage() {
-  const data = await loadNews();
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams: { filter?: string };
+}) {
+  const favOnly = searchParams.filter === "fav";
+  const data = await loadNews(favOnly);
 
   return (
     <main>
       <h1 className="large-title">ニュース</h1>
       <p className="mt-1 text-[13px] text-muted">
-        毎時自動収集。タイトルを押すと元記事へ。「翻訳」「要約」は押した記事だけをその場で処理します。
+        毎時自動収集。タイトルを押すと元記事へ。★で論文などをお気に入り保存できます。
       </p>
 
       {data === null ? (
         <p className="card mt-6 p-4 text-sm text-red-600">DBに接続できませんでした。</p>
       ) : (
         <>
-          {/* ジャンルへの入口 */}
+          {/* お気に入り＋ジャンルへの入口 */}
           <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={favOnly ? "/news" : "/news?filter=fav"}
+              className={`chip cursor-pointer transition-opacity duration-200 hover:opacity-80 ${
+                favOnly ? "bg-[#DF923F] !text-card" : "bg-card"
+              }`}
+              style={favOnly ? undefined : { color: "#8A5A1F" }}
+            >
+              <Star className="h-3 w-3" fill={favOnly ? "currentColor" : "#DF923F"} aria-hidden="true" />
+              お気に入り
+              <span className="opacity-70">{data.favoriteCount}</span>
+            </Link>
             {data.genres.map((genre) => (
               <Link
                 key={genre.name}
@@ -41,7 +59,11 @@ export default async function NewsPage() {
           </div>
 
           {data.articles.length === 0 ? (
-            <p className="mt-8 text-sm text-muted">記事はまだありません。</p>
+            <p className="mt-8 text-sm text-muted">
+              {favOnly
+                ? "お気に入りはまだありません。記事の★を押すと、ここに保存されます。"
+                : "記事はまだありません。"}
+            </p>
           ) : (
             <ArticleTable articles={data.articles} />
           )}
@@ -51,14 +73,17 @@ export default async function NewsPage() {
   );
 }
 
-async function loadNews() {
+async function loadNews(favOnly: boolean) {
   try {
-    const [articles, genreCounts] = await Promise.all([
+    const [articles, favoriteCount, genreCounts] = await Promise.all([
       prisma.article.findMany({
-        orderBy: { publishedAt: "desc" },
-        take: NEWS_LIST_COUNT,
+        // お気に入り表示は追加した順、通常表示は新着順
+        where: favOnly ? { favoritedAt: { not: null } } : {},
+        orderBy: favOnly ? { favoritedAt: "desc" } : { publishedAt: "desc" },
+        ...(favOnly ? {} : { take: NEWS_LIST_COUNT }),
         include: { source: { select: { name: true, category: true } } },
       }),
+      prisma.article.count({ where: { favoritedAt: { not: null } } }),
       Promise.all(
         CATEGORIES.map(async (c) => ({
           name: c.name,
@@ -79,8 +104,9 @@ async function loadNews() {
         CATEGORIES.find((c) => c.name === a.source.category) ?? CATEGORY_STYLE_FALLBACK,
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),
+      favorite: a.favoritedAt !== null,
     }));
-    return { articles: rows, genres: genreCounts };
+    return { articles: rows, favoriteCount, genres: genreCounts };
   } catch (error) {
     console.error("[ニュース一覧] 取得失敗:", error);
     return null;

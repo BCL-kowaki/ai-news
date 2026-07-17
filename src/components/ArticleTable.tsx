@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { summarizeArticle, translateArticle } from "@/app/actions";
+import { Star } from "lucide-react";
+import { summarizeArticle, toggleFavoriteArticle, translateArticle } from "@/app/actions";
 
 /**
  * 記事一覧（レスポンシブ）
@@ -21,6 +22,7 @@ export type ArticleRow = {
   categoryStyle: { bg: string; fg: string };
   publishedLabel: string;
   hasContent: boolean;
+  favorite: boolean;
 };
 
 type ResultState = { kind: "translate" | "summarize"; ok: boolean; text: string } | null;
@@ -41,6 +43,16 @@ function ArticleItem({ article }: { article: ArticleRow }) {
   const [isPending, startTransition] = useTransition();
   const [active, setActive] = useState<"translate" | "summarize" | null>(null);
   const [result, setResult] = useState<ResultState>(null);
+  const [favorite, setFavorite] = useState(article.favorite);
+
+  /** お気に入りの切り替え（表示は即時反映＝楽観更新、サーバー結果で最終確定） */
+  function toggleFavorite() {
+    setFavorite((prev) => !prev);
+    startTransition(async () => {
+      const res = await toggleFavoriteArticle(article.id);
+      setFavorite(res.favorite);
+    });
+  }
 
   function run(kind: "translate" | "summarize") {
     setActive(kind);
@@ -83,7 +95,21 @@ function ArticleItem({ article }: { article: ArticleRow }) {
           </div>
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 items-center gap-2">
+          {/* お気に入り（★） */}
+          <button
+            type="button"
+            onClick={toggleFavorite}
+            aria-label={favorite ? "お気に入りから外す" : "お気に入りに追加"}
+            aria-pressed={favorite}
+            className="-m-1 cursor-pointer p-1 transition-transform duration-150 active:scale-90"
+          >
+            <Star
+              className={`h-5 w-5 ${favorite ? "text-[#DF923F]" : "text-faint hover:text-muted"}`}
+              fill={favorite ? "#DF923F" : "none"}
+              aria-hidden="true"
+            />
+          </button>
           <button
             type="button"
             onClick={() => run("translate")}

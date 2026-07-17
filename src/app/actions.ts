@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
@@ -39,6 +40,28 @@ export async function translateArticle(
   return translated
     ? { ok: true, text: translated }
     : { ok: false, text: "翻訳できませんでした（DeepLの設定・無料枠を確認してください）。" };
+}
+
+/**
+ * 記事のお気に入りを切り替える（論文の保存などに使う）。
+ * 戻り値は切り替え後の状態（true=お気に入り）。
+ */
+export async function toggleFavoriteArticle(articleId: string): Promise<{ favorite: boolean }> {
+  await assertLoggedIn();
+
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+    select: { favoritedAt: true },
+  });
+  if (!article) return { favorite: false };
+
+  const favorite = article.favoritedAt === null;
+  await prisma.article.update({
+    where: { id: articleId },
+    data: { favoritedAt: favorite ? new Date() : null },
+  });
+  revalidatePath("/news");
+  return { favorite };
 }
 
 /**

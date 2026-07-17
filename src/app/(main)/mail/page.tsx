@@ -4,6 +4,7 @@ import { MAIL_LIST_COUNT } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
 import { listGoogleAccounts } from "@/lib/google/api";
 import { listRecentMail, type MailItem } from "@/lib/google/gmail";
+import { MailLink } from "@/components/MailLink";
 
 /**
  * メール一覧ページ（/mail）
@@ -77,10 +78,10 @@ export default async function MailPage() {
                   <ul className="divide-y divide-line">
                     {mail.map((m) => (
                       <li key={m.id}>
-                        <a
-                          href={m.gmailUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <MailLink
+                          webUrl={m.gmailUrl}
+                          threadId={m.threadId}
+                          accountEmail={m.accountEmail}
                           className="block px-4 py-3 transition-colors duration-150 hover:bg-bg active:opacity-60"
                         >
                           <span className="flex items-baseline justify-between gap-3">
@@ -106,7 +107,7 @@ export default async function MailPage() {
                               {m.snippet}
                             </span>
                           )}
-                        </a>
+                        </MailLink>
                       </li>
                     ))}
                   </ul>

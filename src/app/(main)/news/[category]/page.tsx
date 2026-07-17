@@ -77,6 +77,7 @@ async function loadArticles(category: string): Promise<ArticleRow[] | null> {
       categoryStyle: style,
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),
+      favorite: a.favoritedAt !== null,
     }));
   } catch (error) {
     console.error("[ジャンル一覧] 取得失敗:", error);
