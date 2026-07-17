@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
+import { getReadableAudioUrl } from "@/lib/blob";
 import { transcribeAudio } from "@/lib/transcribe";
 
 /**
@@ -35,7 +36,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
     data: { status: "transcribing", errorMsg: null },
   });
 
-  const result = await transcribeAudio(meeting.audioUrl, meeting.audioMime ?? "audio/webm");
+  // Privateストアの音声を取得するための署名付きURLを発行してから文字起こしへ
+  const readableUrl = await getReadableAudioUrl(meeting.audioUrl, 1800);
+  const result = await transcribeAudio(readableUrl, meeting.audioMime ?? "audio/webm");
 
   if (!result.ok) {
     await prisma.meeting.update({

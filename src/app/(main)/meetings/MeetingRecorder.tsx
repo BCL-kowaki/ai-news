@@ -123,7 +123,7 @@ export function MeetingRecorder() {
     setPhase("uploading");
     try {
       const uploaded = await upload(`meetings/${filename}`, data, {
-        access: "public",
+        access: "private", // 会議音声は機密。再生時はサーバーが署名付きURLを発行する
         handleUploadUrl: "/api/meetings/upload",
         contentType: mime,
       });

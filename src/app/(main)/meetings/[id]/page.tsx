@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowLeft, CalendarCheck2, CalendarPlus, Trash2 } from "lucide-react";
 import { meetingStatusStyle } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
+import { getReadableAudioUrl } from "@/lib/blob";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "@/components/SubmitButton";
 import { deleteMeeting, registerMeetingCalendar } from "../actions";
@@ -23,6 +24,8 @@ export default async function MeetingDetailPage({ params }: { params: { id: stri
 
   const status = meetingStatusStyle(meeting.status);
   const isBusy = meeting.status === "transcribing" || meeting.status === "summarizing";
+  // Privateストアの音声を再生するための署名付きURL（1時間有効）
+  const playableUrl = await getReadableAudioUrl(meeting.audioUrl);
 
   return (
     <main>
@@ -48,7 +51,7 @@ export default async function MeetingDetailPage({ params }: { params: { id: stri
 
       {/* 音声プレーヤー＋処理ボタン */}
       <section className="card mt-4 p-5">
-        <audio controls preload="metadata" src={meeting.audioUrl} className="w-full">
+        <audio controls preload="metadata" src={playableUrl} className="w-full">
           お使いのブラウザは音声再生に対応していません。
         </audio>
         <div className="mt-4">
