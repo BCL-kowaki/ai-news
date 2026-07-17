@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  CalendarDays,
   Newspaper,
   ListTodo,
   StickyNote,
@@ -21,6 +22,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "ホーム", icon: LayoutDashboard },
+  { href: "/calendar", label: "カレンダー", icon: CalendarDays },
   { href: "/news", label: "ニュース", icon: Newspaper },
   { href: "/tasks", label: "タスク", icon: ListTodo },
   { href: "/memos", label: "メモ", icon: StickyNote },

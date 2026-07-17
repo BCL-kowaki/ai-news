@@ -115,12 +115,20 @@ export function selectedCalendarIds(account: GoogleAccount): string[] {
 
 /** 全連携アカウントから「今日（JST）」の予定を集めて開始時刻順に返す */
 export async function listTodayEvents(now: Date = new Date()): Promise<TodayEvent[]> {
+  return listUpcomingEvents(1, now);
+}
+
+/** 全連携アカウントから「今日から◯日分（JST）」の予定を集めて開始時刻順に返す */
+export async function listUpcomingEvents(
+  days: number,
+  now: Date = new Date(),
+): Promise<TodayEvent[]> {
   const accounts = await listGoogleAccounts();
   if (accounts.length === 0) return [];
 
   const todayKey = getJstDateKey(now);
   const timeMin = new Date(`${todayKey}T00:00:00+09:00`);
-  const timeMax = new Date(timeMin.getTime() + 24 * 60 * 60 * 1000);
+  const timeMax = new Date(timeMin.getTime() + days * 24 * 60 * 60 * 1000);
 
   // アカウント×カレンダーを並列取得。個々の失敗はnullにして握りつぶす
   const perCalendar = accounts.flatMap((account) =>
@@ -130,7 +138,8 @@ export async function listTodayEvents(now: Date = new Date()): Promise<TodayEven
         timeMax: timeMax.toISOString(),
         singleEvents: "true", // 繰り返し予定を展開する
         orderBy: "startTime",
-        maxResults: "20",
+        maxResults: String(Math.min(20 * days, 250)), // 期間に応じて件数を確保
+
         timeZone: TIMEZONE,
         fields: "summary,items(id,summary,status,start,end)",
       });

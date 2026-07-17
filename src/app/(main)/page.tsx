@@ -20,10 +20,11 @@ import {
   DASHBOARD_QUICK_MEMO_COUNT,
   DASHBOARD_TASK_COUNT,
 } from "@/lib/config";
-import { formatJstDateTime, formatJstTime, getJstDateKey } from "@/lib/datetime";
+import { formatJstDateTime, getJstDateKey } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
 import { listTodayEvents, type TodayEvent } from "@/lib/google/calendar";
 import { listAllRecentMail, type MailItem } from "@/lib/google/gmail";
+import { EventRow } from "@/components/EventRow";
 import { TaskItem } from "@/components/TaskItem";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AutoResetForm } from "@/components/AutoResetForm";
@@ -82,13 +83,18 @@ export default async function DashboardPage() {
 
         {/* ② 今日の予定（全アカウント統合・色分け） */}
         <section className="card p-5 sm:col-span-2">
-          <h2 className="card-title">
-            <CalendarDays className="h-4 w-4 text-accent" aria-hidden="true" />
-            今日の予定
-            {data && data.events.length > 0 && (
-              <span className="chip bg-accent-soft text-accent">{data.events.length}</span>
-            )}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="card-title">
+              <CalendarDays className="h-4 w-4 text-accent" aria-hidden="true" />
+              今日の予定
+              {data && data.events.length > 0 && (
+                <span className="chip bg-accent-soft text-accent">{data.events.length}</span>
+              )}
+            </h2>
+            <Link href="/calendar" className="text-xs font-bold text-muted hover:text-ink">
+              すべて見る
+            </Link>
+          </div>
 
           {data && data.expiredAccounts.length > 0 && (
             <p className="mt-2 text-xs font-medium text-red-600">
@@ -386,28 +392,6 @@ function formatJstFullDate(now: Date): string {
 function firstName(name: string | null | undefined): string | null {
   if (!name) return null;
   return name.split(/\s+/)[0] ?? null;
-}
-
-/** 予定1行（時刻＋出どころチップ＋タイトル）。チップはアカウント色の淡色背景 */
-function EventRow({ event }: { event: TodayEvent }) {
-  return (
-    <li className="flex items-center gap-2.5 py-2 text-sm">
-      <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
-        {event.allDay ? "終日" : formatJstTime(event.start)}
-      </span>
-      {/* 出どころ（会社/個人/家族カレンダー名）。色はアカウント色、背景はその10%透過 */}
-      <span
-        className="chip shrink-0"
-        style={{ backgroundColor: `${event.colorHex}1A`, color: event.colorHex }}
-      >
-        {event.sourceLabel}
-      </span>
-      <span className="min-w-0 flex-1 truncate">{event.title}</span>
-      {!event.allDay && event.end && (
-        <span className="shrink-0 text-xs text-faint">〜{formatJstTime(event.end)}</span>
-      )}
-    </li>
-  );
 }
 
 async function loadDashboard() {
