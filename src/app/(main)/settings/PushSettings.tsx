@@ -16,7 +16,7 @@ import {
  * iPhoneは「ホーム画面に追加」したSERAから開いた場合のみ有効（iOSの仕様）。
  */
 
-type Status = "checking" | "unsupported" | "denied" | "on" | "off";
+type Status = "checking" | "nokey" | "unsupported" | "denied" | "on" | "off";
 
 /** VAPID公開鍵をPush API用のバイト列に変換する */
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
@@ -37,7 +37,12 @@ export function PushSettings() {
   // 現在の購読状態を調べる
   useEffect(() => {
     (async () => {
-      if (!PUBLIC_KEY || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      // サーバー側の鍵が未設定（Vercelの環境変数＋再デプロイが必要）
+      if (!PUBLIC_KEY) {
+        setStatus("nokey");
+        return;
+      }
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         setStatus("unsupported");
         return;
       }
@@ -114,6 +119,15 @@ export function PushSettings() {
 
   if (status === "checking") {
     return <p className="mt-3 text-sm text-muted">確認中…</p>;
+  }
+  if (status === "nokey") {
+    return (
+      <p className="mt-3 text-sm leading-relaxed text-red-600">
+        サーバーの通知設定（VAPID鍵）が未設定です。Vercelの環境変数に
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT を追加し、
+        再デプロイしてください。
+      </p>
+    );
   }
   if (status === "unsupported") {
     return (
