@@ -1,13 +1,23 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { Link2, Rss, KeyRound, UserRound, Plus, RefreshCw, CalendarCog, Trash2 } from "lucide-react";
+import {
+  Link2,
+  Rss,
+  KeyRound,
+  UserRound,
+  Plus,
+  RefreshCw,
+  CalendarCog,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
 import { isEncryptionConfigured } from "@/lib/crypto";
 import { isGoogleClientConfigured } from "@/lib/google/oauth";
 import { SubmitButton } from "@/components/SubmitButton";
 import { SignOutButton } from "./SignOutButton";
-import { disconnectGoogleAccount } from "./google-actions";
+import { disconnectGoogleAccount, renameGoogleAccount } from "./google-actions";
 
 /**
  * 設定ページ（/settings）
@@ -141,6 +151,32 @@ export default async function SettingsPage({
                           </SubmitButton>
                         </form>
                       </div>
+
+                      {/* 表示名の変更（畳んで表示） */}
+                      <details className="mt-2 pl-5">
+                        <summary className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+                          <Pencil className="h-3 w-3" aria-hidden="true" />
+                          表示名を変更
+                        </summary>
+                        <form
+                          action={renameGoogleAccount}
+                          className="mt-2 flex max-w-xs items-center gap-2"
+                        >
+                          <input type="hidden" name="id" value={account.id} />
+                          <label htmlFor={`label-${account.id}`} className="sr-only">
+                            表示名
+                          </label>
+                          <input
+                            id={`label-${account.id}`}
+                            name="label"
+                            required
+                            maxLength={20}
+                            defaultValue={account.label}
+                            className="input bg-card"
+                          />
+                          <SubmitButton pendingLabel="…">保存</SubmitButton>
+                        </form>
+                      </details>
                     </li>
                   ))}
                 </ul>
