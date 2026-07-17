@@ -88,15 +88,42 @@ model Task {
 
 /// メモ。kind で「突発メモ」と「よく使うメモ」を分ける。
 model Memo {
-  id        String   @id @default(cuid())
-  kind      String // "quick"（突発メモ） / "pinned"（よく使うメモ）
-  title     String? // よく使うメモの見出し（任意）
-  body      String
-  sortOrder Int      @default(0) // よく使うメモの並び順（小さいほど上）
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String           @id @default(cuid())
+  kind        String // "quick"（突発メモ） / "pinned"（よく使うメモ）
+  title       String? // よく使うメモの見出し（任意）
+  body        String
+  sortOrder   Int              @default(0) // よく使うメモの並び順（小さいほど上）
+  folderId    String? // 所属フォルダ（null=未分類）
+  folder      MemoFolder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  attachments MemoAttachment[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([kind, sortOrder])
+  @@index([folderId])
+}
+
+/// メモのフォルダ（突発・よく使う共通のグルーピング）
+model MemoFolder {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  memos     Memo[]
+}
+
+/// メモの添付ファイル（画像・動画・PDF・録音音声など。実体はVercel Blob）
+model MemoAttachment {
+  id        String   @id @default(cuid())
+  memoId    String
+  memo      Memo     @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  url       String // BlobのURL
+  mime      String // image/png, video/mp4, application/pdf, audio/webm など
+  name      String // 表示用ファイル名
+  bytes     Int
+  createdAt DateTime @default(now())
+
+  @@index([memoId])
 }
 
 /// 会議の録音・文字起こし・レポート要約
