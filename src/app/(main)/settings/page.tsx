@@ -1,27 +1,59 @@
+import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { Link2, Rss, KeyRound, UserRound } from "lucide-react";
+import { Link2, Rss, KeyRound, UserRound, Plus, RefreshCw, CalendarCog, Trash2 } from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
+import { isEncryptionConfigured } from "@/lib/crypto";
+import { isGoogleClientConfigured } from "@/lib/google/oauth";
+import { SubmitButton } from "@/components/SubmitButton";
 import { SignOutButton } from "./SignOutButton";
+import { disconnectGoogleAccount } from "./google-actions";
 
 /**
  * 設定ページ（/settings）
  *
  * - アカウント: ログイン中のユーザーとログアウト
- * - Google連携: 連携済みアカウントの一覧（フェーズ2で追加・再連携UIを実装）
+ * - Google連携: アカウントの追加・再連携・解除・カレンダー選択
  * - AI・翻訳: APIキーの設定状況（キーの値は絶対に表示しない）
  * - 情報ソース: ニュース収集元RSSの一覧
  */
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+/** コールバックから戻ってきたときのメッセージ（?connected= / ?error=） */
+const ERROR_MESSAGES: Record<string, string> = {
+  client: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET が未設定のため連携できません。",
+  enckey: "TOKEN_ENCRYPTION_KEY が未設定のため連携できません（docs/セットアップ手順.md 参照）。",
+  denied: "連携がキャンセルされました。",
+  state: "セキュリティ確認に失敗しました。もう一度お試しください。",
+  norefresh: "Googleからトークンが返りませんでした。もう一度お試しください。",
+  exchange: "連携処理に失敗しました。もう一度お試しください。",
+};
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { connected?: string; error?: string };
+}) {
   const session = await getServerSession(authOptions);
   const data = await loadSettings();
+  const connectReady = isGoogleClientConfigured() && isEncryptionConfigured();
 
   return (
     <main>
       <h1 className="large-title">設定</h1>
+
+      {/* 連携結果のバナー */}
+      {searchParams.connected && (
+        <p className="card mt-4 border-l-4 border-green-500 p-4 text-sm text-green-700">
+          {searchParams.connected} を連携しました。
+        </p>
+      )}
+      {searchParams.error && (
+        <p className="card mt-4 border-l-4 border-red-500 p-4 text-sm text-red-600">
+          {ERROR_MESSAGES[searchParams.error] ?? "連携に失敗しました。"}
+        </p>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* アカウント */}
@@ -53,38 +85,106 @@ export default async function SettingsPage() {
           </p>
         </section>
 
-        {/* Google連携（フェーズ2） */}
+        {/* Google連携 */}
         <section className="card p-5 lg:col-span-2">
           <h2 className="card-title">
             <Link2 className="h-4 w-4 text-accent" aria-hidden="true" />
             Google連携（Gmail・カレンダー）
           </h2>
+          <p className="mt-1 text-xs leading-relaxed text-faint">
+            読み取り専用で接続します。家族共用カレンダーは、共有されている個人アカウントを連携して
+            「カレンダーを選ぶ」から追加してください。
+          </p>
+
           {data === null ? (
             <p className="mt-3 text-sm text-red-600">DBに接続できませんでした。</p>
-          ) : data.googleAccounts.length === 0 ? (
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              まだ連携されていません。会社用・個人用のGoogleアカウントを接続すると、
-              予定とメールがダッシュボードに表示されます（フェーズ2で実装予定）。
-            </p>
           ) : (
-            <ul className="mt-3 divide-y divide-line">
-              {data.googleAccounts.map((account) => (
-                <li key={account.id} className="flex items-center gap-3 py-2.5 text-sm">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: account.colorHex ?? "#007AFF" }}
-                    aria-hidden="true"
-                  />
-                  <span className="font-semibold">{account.label}</span>
-                  <span className="min-w-0 flex-1 truncate text-muted">{account.email}</span>
-                  {account.status === "expired" ? (
-                    <span className="chip bg-red-50 text-red-600">要再連携</span>
-                  ) : (
-                    <span className="chip bg-green-50 text-green-700">接続中</span>
+            <>
+              {data.googleAccounts.length > 0 && (
+                <ul className="mt-3 divide-y divide-line">
+                  {data.googleAccounts.map((account) => (
+                    <li key={account.id} className="py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: account.colorHex ?? "#007AFF" }}
+                          aria-hidden="true"
+                        />
+                        <span className="shrink-0 font-semibold">{account.label}</span>
+                        <span className="min-w-0 flex-1 truncate text-muted">{account.email}</span>
+                        {account.status === "expired" ? (
+                          <span className="chip shrink-0 bg-red-50 text-red-600">要再連携</span>
+                        ) : (
+                          <span className="chip shrink-0 bg-green-50 text-green-700">接続中</span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2 pl-5">
+                        <Link
+                          href={`/settings/calendars/${account.id}`}
+                          className="btn-ghost"
+                        >
+                          <CalendarCog className="h-3.5 w-3.5" aria-hidden="true" />
+                          カレンダーを選ぶ
+                        </Link>
+                        <a
+                          href={`/api/google/connect?label=${encodeURIComponent(account.label)}`}
+                          className="btn-ghost"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                          再連携
+                        </a>
+                        <form action={disconnectGoogleAccount}>
+                          <input type="hidden" name="id" value={account.id} />
+                          <SubmitButton variant="ghost" pendingLabel="…">
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            解除
+                          </SubmitButton>
+                        </form>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* 追加フォーム：ラベルを決めてGoogleの同意画面へ（GETでconnectルートに飛ぶ） */}
+              {connectReady ? (
+                <form
+                  action="/api/google/connect"
+                  method="GET"
+                  className="mt-4 flex flex-col gap-2 rounded-xl bg-bg p-4 sm:flex-row sm:items-end"
+                >
+                  <div className="flex-1">
+                    <label htmlFor="connect-label" className="text-xs font-semibold text-muted">
+                      表示名（例：会社 / 個人）
+                    </label>
+                    <input
+                      id="connect-label"
+                      name="label"
+                      maxLength={20}
+                      placeholder="個人"
+                      className="input mt-1 bg-card"
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary">
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    Googleアカウントを連携
+                  </button>
+                </form>
+              ) : (
+                <p className="mt-4 rounded-xl bg-bg p-4 text-xs leading-relaxed text-muted">
+                  連携には環境変数の設定が必要です：
+                  {!isGoogleClientConfigured() && (
+                    <span className="block font-mono text-red-600">
+                      GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+                    </span>
                   )}
-                </li>
-              ))}
-            </ul>
+                  {!isEncryptionConfigured() && (
+                    <span className="block font-mono text-red-600">TOKEN_ENCRYPTION_KEY</span>
+                  )}
+                  設定方法は docs/セットアップ手順.md を参照してください。
+                </p>
+              )}
+            </>
           )}
         </section>
 

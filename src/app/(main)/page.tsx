@@ -14,13 +14,16 @@ import { authOptions } from "@/lib/nextauth";
 import {
   CATEGORIES,
   CATEGORY_STYLE_FALLBACK,
+  DASHBOARD_MAIL_COUNT,
   DASHBOARD_NEWS_COUNT,
   DASHBOARD_PINNED_MEMO_COUNT,
   DASHBOARD_QUICK_MEMO_COUNT,
   DASHBOARD_TASK_COUNT,
 } from "@/lib/config";
-import { formatJstDateTime, getJstDateKey } from "@/lib/datetime";
+import { formatJstDateTime, formatJstTime, getJstDateKey } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
+import { listTodayEvents, type TodayEvent } from "@/lib/google/calendar";
+import { listAllRecentMail, type MailItem } from "@/lib/google/gmail";
 import { TaskItem } from "@/components/TaskItem";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AutoResetForm } from "@/components/AutoResetForm";
@@ -77,15 +80,26 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* ② 今日の予定 */}
+        {/* ② 今日の予定（全アカウント統合・色分け） */}
         <section className="card p-5 sm:col-span-2">
           <h2 className="card-title">
             <CalendarDays className="h-4 w-4 text-accent" aria-hidden="true" />
             今日の予定
+            {data && data.events.length > 0 && (
+              <span className="chip bg-accent-soft text-accent">{data.events.length}</span>
+            )}
           </h2>
-          {data?.googleAccountCount ? (
-            <p className="mt-3 text-sm text-muted">カレンダーの表示はフェーズ2で実装予定です。</p>
-          ) : (
+
+          {data && data.expiredAccounts.length > 0 && (
+            <p className="mt-2 text-xs font-medium text-red-600">
+              {data.expiredAccounts.join("・")} の連携が切れています。
+              <Link href="/settings" className="underline">
+                設定から再連携
+              </Link>
+            </p>
+          )}
+
+          {!data || data.googleAccountCount === 0 ? (
             <div className="mt-3 rounded-xl bg-bg p-4">
               <p className="text-sm leading-relaxed text-muted">
                 Googleカレンダー（会社・個人・家族共用）を連携すると、ここに今日の予定が並びます。
@@ -98,6 +112,14 @@ export default async function DashboardPage() {
                 <ArrowRight className="h-3 w-3" aria-hidden="true" />
               </Link>
             </div>
+          ) : data.events.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">今日の予定はありません。</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-line">
+              {data.events.map((event) => (
+                <EventRow key={event.id} event={event} />
+              ))}
+            </ul>
           )}
         </section>
 
@@ -267,24 +289,66 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* ⑦ メール（フェーズ2） */}
+        {/* ⑦ メール */}
         <section className="card p-5">
-          <h2 className="card-title">
-            <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
-            メール
-          </h2>
-          <div className="mt-3 rounded-xl bg-bg p-4">
-            <p className="text-sm leading-relaxed text-muted">
-              Gmail（会社・個人）を連携すると、重要なメールの要約がここに表示されます。
-            </p>
-            <Link
-              href="/settings"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
-            >
-              設定で連携する
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
-            </Link>
+          <div className="flex items-center justify-between">
+            <h2 className="card-title">
+              <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
+              メール
+            </h2>
+            {data && data.googleAccountCount > 0 && (
+              <Link href="/mail" className="text-xs font-semibold text-muted hover:text-ink">
+                すべて見る
+              </Link>
+            )}
           </div>
+          {!data || data.googleAccountCount === 0 ? (
+            <div className="mt-3 rounded-xl bg-bg p-4">
+              <p className="text-sm leading-relaxed text-muted">
+                Gmail（会社・個人）を連携すると、最新のメールがここに表示されます。
+              </p>
+              <Link
+                href="/settings"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+              >
+                設定で連携する
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : data.mail.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">メールを取得できませんでした。</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-line">
+              {data.mail.map((mail) => (
+                <li key={`${mail.accountEmail}:${mail.id}`} className="py-2">
+                  <a
+                    href={mail.gmailUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: mail.colorHex }}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                          mail.unread ? "font-semibold" : "font-normal text-muted"
+                        }`}
+                      >
+                        {mail.subject}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate pl-3 text-xs text-faint">
+                      {mail.from}・{formatJstDateTime(mail.date)}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </main>
@@ -324,11 +388,41 @@ function firstName(name: string | null | undefined): string | null {
   return name.split(/\s+/)[0] ?? null;
 }
 
+/** 予定1行（時刻＋アカウント色ドット＋タイトル） */
+function EventRow({ event }: { event: TodayEvent }) {
+  return (
+    <li className="flex items-center gap-2.5 py-2 text-sm">
+      <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
+        {event.allDay ? "終日" : formatJstTime(event.start)}
+      </span>
+      <span
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: event.colorHex }}
+        aria-hidden="true"
+        title={event.accountLabel}
+      />
+      <span className="min-w-0 flex-1 truncate">{event.title}</span>
+      {!event.allDay && event.end && (
+        <span className="shrink-0 text-xs text-faint">〜{formatJstTime(event.end)}</span>
+      )}
+    </li>
+  );
+}
+
 async function loadDashboard() {
   try {
     const todayKey = getJstDateKey();
-    const [briefing, tasks, openTaskCount, quickMemos, pinnedMemos, articles, googleAccountCount] =
-      await Promise.all([
+    const [
+      briefing,
+      tasks,
+      openTaskCount,
+      quickMemos,
+      pinnedMemos,
+      articles,
+      googleAccounts,
+      events,
+      mail,
+    ] = await Promise.all([
         prisma.briefing.findUnique({ where: { dateKey: todayKey } }),
         prisma.task.findMany({
           where: { status: "open" },
@@ -355,7 +449,16 @@ async function loadDashboard() {
           take: DASHBOARD_NEWS_COUNT,
           include: { source: { select: { name: true, category: true } } },
         }),
-        prisma.googleAccount.count(),
+        prisma.googleAccount.findMany({ select: { label: true, status: true } }),
+        // Google APIの失敗はカード単位で握りつぶす（他のカードを道連れにしない）
+        listTodayEvents().catch((e): TodayEvent[] => {
+          console.error("[ダッシュボード] 予定の取得に失敗:", e);
+          return [];
+        }),
+        listAllRecentMail(DASHBOARD_MAIL_COUNT).catch((e): MailItem[] => {
+          console.error("[ダッシュボード] メールの取得に失敗:", e);
+          return [];
+        }),
       ]);
 
     return {
@@ -364,7 +467,10 @@ async function loadDashboard() {
       openTaskCount,
       quickMemos,
       pinnedMemos,
-      googleAccountCount,
+      googleAccountCount: googleAccounts.length,
+      expiredAccounts: googleAccounts.filter((a) => a.status === "expired").map((a) => a.label),
+      events,
+      mail: mail.slice(0, DASHBOARD_MAIL_COUNT),
       articles: articles.map((a) => ({
         id: a.id,
         title: a.titleJa ?? a.title,

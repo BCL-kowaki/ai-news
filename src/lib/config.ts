@@ -58,6 +58,22 @@ export const DASHBOARD_TASK_COUNT = 5; // タスクカード
 export const DASHBOARD_NEWS_COUNT = 6; // ニュースダイジェスト
 export const DASHBOARD_QUICK_MEMO_COUNT = 3; // 突発メモの直近表示
 export const DASHBOARD_PINNED_MEMO_COUNT = 4; // よく使うメモ
+export const DASHBOARD_MAIL_COUNT = 3; // メールカード（全アカウント横断）
+
+/** /mail ページで1アカウントあたり表示するメール件数 */
+export const MAIL_LIST_COUNT = 10;
+
+/**
+ * Google連携アカウントの色プリセット（予定・メールの色分けに使う）
+ * 連携した順にこの色が割り当てられる。iOSのシステムカラーに合わせている。
+ */
+export const GOOGLE_ACCOUNT_COLORS = [
+  "#007AFF", // ブルー（1人目＝個人など）
+  "#34C759", // グリーン（2人目＝会社など）
+  "#FF9500", // オレンジ
+  "#AF52DE", // パープル
+  "#FF2D55", // ピンク
+];
 
 /** ニュース一覧（/news）で1ページに表示する件数 */
 export const NEWS_LIST_COUNT = 30;
