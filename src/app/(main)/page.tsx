@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getServerSession } from "next-auth";
 import {
   Sparkles,
@@ -30,6 +32,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { AutoResetForm } from "@/components/AutoResetForm";
 import { createTask } from "./tasks/actions";
 import { createMemo } from "./memos/actions";
+import { GenerateBriefingButton } from "./GenerateBriefingButton";
 
 /**
  * ダッシュボード（/）— ベントグリッド
@@ -63,19 +66,22 @@ export default async function DashboardPage() {
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* ① AIブリーフィング */}
         <section className="card p-5 sm:col-span-2">
-          <h2 className="card-title">
-            <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
-            今日のブリーフィング
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="card-title">
+              <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+              今日のブリーフィング
+            </h2>
+            <GenerateBriefingButton hasBriefing={Boolean(data?.briefing)} />
+          </div>
           {data?.briefing ? (
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">
-              {data.briefing.content}
-            </p>
+            <div className="report mt-3 text-sm">
+              <Markdown remarkPlugins={[remarkGfm]}>{data.briefing.content}</Markdown>
+            </div>
           ) : (
             <div className="mt-3 rounded-xl bg-accent-soft p-4">
               <p className="text-sm leading-relaxed text-muted">
-                毎朝7時、予定・メール・タスク・ニュースをAIがまとめてここに表示します。
-                <span className="mt-1 block text-xs text-faint">（フェーズ3で有効になります）</span>
+                予定・メール・タスク・ニュースをAIがまとめます。毎朝7時に自動生成されるほか、
+                「今すぐ生成」でいつでも作れます。
               </p>
             </div>
           )}

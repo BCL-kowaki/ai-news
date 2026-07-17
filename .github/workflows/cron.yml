@@ -10,7 +10,6 @@
 #   CRON_SECRET : Vercelに設定したものと同じ値
 #
 # 注意: GitHub Actionsのスケジュールは混雑時に数分〜十数分遅れることがある（仕様）。
-# ※ Slack配信(broadcast)は廃止済み。フェーズ3で朝のブリーフィング生成ジョブを追加予定。
 
 name: AI秘書定期実行
 
@@ -18,6 +17,8 @@ on:
   schedule:
     # RSS収集：毎時0分（cronの時刻はUTC。毎時なので日本時間でも毎時0分になる）
     - cron: "0 * * * *"
+    # 朝のブリーフィング生成：UTC 22:00 = 日本時間 7:00
+    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       job:
@@ -27,6 +28,7 @@ on:
         type: choice
         options:
           - fetch # RSS収集のみ
+          - briefing # 朝のブリーフィング生成
 
 jobs:
   fetch:
@@ -39,3 +41,14 @@ jobs:
           curl --fail-with-body --silent --show-error --max-time 120 \
             --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/fetch"
+
+  briefing:
+    name: 朝のブリーフィング生成
+    if: github.event.schedule == '0 22 * * *' || inputs.job == 'briefing'
+    runs-on: ubuntu-latest
+    steps:
+      - name: ブリーフィング生成エンドポイントを呼ぶ
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 150 \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/briefing"
