@@ -48,12 +48,14 @@ export function MemoComposer({
 
   /** ファイルをBlobへアップロードして添付リストに加える */
   async function uploadAttachment(data: Blob, name: string, mime: string): Promise<NewAttachment> {
+    // "audio/webm;codecs=opus" のようなコーデック付きは許可リストに合わないため素の形式に正規化
+    const baseMime = mime.split(";")[0].trim();
     const uploaded = await upload(`memos/${name}`, data, {
       access: "private",
       handleUploadUrl: "/api/uploads",
-      contentType: mime,
+      contentType: baseMime,
     });
-    return { url: uploaded.url, mime, name, bytes: data.size };
+    return { url: uploaded.url, mime: baseMime, name, bytes: data.size };
   }
 
   /** 録音の開始・停止 */

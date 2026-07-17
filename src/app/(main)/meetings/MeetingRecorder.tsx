@@ -138,11 +138,13 @@ export function MeetingRecorder() {
     durationSec: number | null,
   ) {
     setPhase("uploading");
+    // "audio/webm;codecs=opus" のようなコーデック付きはBlobの許可リストに合わないため素の形式に正規化
+    const baseMime = mime.split(";")[0].trim();
     try {
       const uploaded = await upload(`meetings/${filename}`, data, {
         access: "private", // 会議音声は機密。再生時はサーバーが署名付きURLを発行する
         handleUploadUrl: "/api/meetings/upload",
-        contentType: mime,
+        contentType: baseMime,
       });
 
       const result = await createMeeting({
@@ -150,7 +152,7 @@ export function MeetingRecorder() {
         recordedAtISO: recordedAt.toISOString(),
         durationSec,
         audioUrl: uploaded.url,
-        audioMime: mime,
+        audioMime: baseMime,
         audioBytes: data.size,
       });
 
