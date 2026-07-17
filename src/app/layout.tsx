@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f2f2f7", // iOSのステータスバー周りをページ背景と揃える
+  themeColor: "#f8f3e8", // ステータスバー周りをページ背景（紙色）と揃える
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

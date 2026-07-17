@@ -55,7 +55,7 @@ export default async function MailPage() {
               <h2 className="flex items-center gap-2 px-1 text-[13px] font-semibold text-muted">
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: account.colorHex ?? "#007AFF" }}
+                  style={{ backgroundColor: account.colorHex ?? "#709BAD" }}
                   aria-hidden="true"
                 />
                 {account.label}

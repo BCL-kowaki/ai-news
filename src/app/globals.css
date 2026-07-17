@@ -3,28 +3,29 @@
 @tailwind utilities;
 
 /*
- * デザイントークンの実体（単一定義元）— iOSネイティブ調
- * iPhoneの「設定」アプリ・ホーム画面ウィジェットの質感に合わせる。
+ * デザイントークンの実体（単一定義元）— エディトリアル調（参考: yuji.uk/html/260713）
+ * クリーム紙＋濃茶インク＋太枠＋ずらした硬い影＋赤アクセントの「雑誌・ZINE」風。
  * 色を変えたいときはここだけを編集する。Tailwind側（tailwind.config.ts）は名前の割り当てのみ。
  */
 :root {
-  --bg: #f2f2f7; /* ページ背景（iOS systemGroupedBackground） */
-  --card: #ffffff; /* カード背景 */
-  --ink: #000000; /* 本文（iOS label） */
-  --muted: rgba(60, 60, 67, 0.6); /* 補助テキスト（iOS secondaryLabel） */
-  --faint: rgba(60, 60, 67, 0.3); /* 最弱テキスト（iOS tertiaryLabel。装飾用） */
-  --line: rgba(60, 60, 67, 0.15); /* ヘアライン区切り（iOS separator相当） */
-  --accent: #007aff; /* アクセント（iOS systemBlue） */
-  --accent-strong: #0066d6; /* 押下・ホバー時の濃いブルー */
-  --accent-soft: rgba(0, 122, 255, 0.12); /* ブルーの淡色背景 */
-  --fill: rgba(120, 120, 128, 0.12); /* 入力欄・グレーボタンの塗り（iOS tertiaryFill） */
+  --bg: #f8f3e8; /* ページ背景（紙・クリーム） */
+  --bg-deep: #eadac0; /* 濃いめの紙（点線ボックスの地など） */
+  --card: #fff9ec; /* カード背景（明るいクリーム） */
+  --ink: #382c28; /* 本文（濃茶） */
+  --muted: rgba(56, 44, 40, 0.64); /* 補助テキスト */
+  --faint: rgba(56, 44, 40, 0.4); /* 最弱テキスト（装飾用。本文には使わない） */
+  --line: #684c40; /* 枠線（茶） */
+  --accent: #c85e47; /* アクセント（レンガ赤） */
+  --accent-strong: #a84a36; /* 押下・ホバー時の濃い赤 */
+  --accent-soft: #f4d5cd; /* 赤の淡色背景（テラコッタパステル） */
+  --fill: rgba(104, 76, 64, 0.08); /* 入力欄などの塗り */
+  --hard-shadow: rgba(82, 55, 39, 0.18); /* ずらし影の色 */
 }
 
 @layer base {
   body {
     @apply bg-bg text-ink;
-    /* Appleのシステムフォント。iPhone/MacではSF Pro＋ヒラギノ角ゴ＝ネイティブの文字になる */
-    font-feature-settings: "palt";
+    font-feature-settings: "palt"; /* 日本語の約物を詰めて組む */
     -webkit-font-smoothing: antialiased;
   }
 
@@ -46,49 +47,53 @@
 }
 
 @layer components {
-  /* ベントカード：iOSホーム画面ウィジェット風（枠線・影なしの白、角丸大きめ） */
+  /* カード：クリーム地＋太めの茶枠＋ずらした硬い影（エディトリアル調の基本パーツ） */
   .card {
-    @apply rounded-card bg-card;
+    @apply rounded-card border-2 border-line bg-card shadow-card;
   }
 
-  /* リンクになっているカード（押すと沈む＝iOSのハイライト挙動） */
+  /* リンクになっているカード（押すと少し沈む） */
   .card-link {
-    @apply card cursor-pointer transition-opacity duration-150 active:opacity-60;
+    @apply card cursor-pointer transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
   }
 
-  /* カード内の見出し行（ウィジェットのヘッダー風：小さめ・グレー） */
+  /* カード内の見出し行（小さめ・極太・インク色） */
   .card-title {
-    @apply flex items-center gap-1.5 text-[13px] font-semibold text-muted;
+    @apply flex items-center gap-1.5 text-[13px] text-ink;
+    font-weight: 900;
   }
 
-  /* チップ／タグ（ジャンル表示など） */
+  /* チップ／タグ：パステル地＋茶枠のピル（参考サイトの意匠） */
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    @apply inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-xs;
+    font-weight: 700;
   }
 
-  /* 主要ボタン（iOSの塗りボタン：ブルー・丸み強め） */
+  /* 主要ボタン（濃茶の塗り＋小さなずらし影） */
   .btn-primary {
-    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent px-5 py-2 text-[15px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 active:opacity-60 disabled:cursor-default disabled:opacity-40;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-line bg-ink px-5 py-2 text-[15px] font-bold text-card transition-all duration-150 hover:bg-line active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:cursor-default disabled:opacity-40;
+    box-shadow: 3px 4px 0 var(--hard-shadow);
   }
 
-  /* 補助ボタン（iOSのグレー塗り＋ブルー文字） */
+  /* 補助ボタン（クリーム地＋茶枠） */
   .btn-ghost {
-    @apply inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full bg-fill px-3.5 py-1.5 text-[13px] font-semibold text-accent transition-opacity duration-150 hover:opacity-80 active:opacity-60 disabled:cursor-default disabled:opacity-40 disabled:text-muted;
+    @apply inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border-2 border-line bg-card px-3 py-1.5 text-[13px] font-bold text-ink transition-colors duration-150 hover:bg-bg active:opacity-60 disabled:cursor-default disabled:opacity-40;
   }
 
-  /* テキスト入力（iOSの検索フィールド風：グレー塗り・枠線なし） */
+  /* テキスト入力（クリーム地＋茶枠。フォーカスで赤枠） */
   .input {
-    @apply w-full rounded-[10px] border-0 bg-fill px-3.5 py-2.5 text-[15px] text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.45)];
+    @apply w-full rounded-lg border-2 border-line bg-card px-3.5 py-2.5 text-[15px] text-ink placeholder:text-faint focus:border-accent focus:outline-none;
   }
 
-  /* ページ見出し（iOSのラージタイトル） */
+  /* ページ見出し（極太。参考サイトのweight 950） */
   .large-title {
-    @apply text-[28px] font-bold tracking-tight;
+    @apply text-[28px] tracking-tight;
+    font-weight: 950;
   }
 
-  /* すりガラスのバー（ヘッダー・タブバー共通） */
+  /* 上下のバー（ヘッダー・タブバー共通）：紙色の半透明＋茶の区切り */
   .glass-bar {
-    @apply border-line bg-[rgba(249,249,249,0.85)] backdrop-blur-xl;
+    @apply border-line bg-[rgba(248,243,232,0.92)] backdrop-blur-md;
   }
 
   /* 会議レポートなどのMarkdown整形表示（見出し・表・箇条書き） */
@@ -96,13 +101,16 @@
     @apply text-sm leading-relaxed text-ink;
   }
   .report h1 {
-    @apply mb-3 mt-1 text-xl font-bold tracking-tight;
+    @apply mb-3 mt-1 text-xl tracking-tight;
+    font-weight: 950;
   }
   .report h2 {
-    @apply mb-2 mt-6 border-b border-line pb-1.5 text-base font-bold;
+    @apply mb-2 mt-6 border-b-2 border-line pb-1.5 text-base;
+    font-weight: 900;
   }
   .report h3 {
-    @apply mb-1.5 mt-4 text-sm font-bold;
+    @apply mb-1.5 mt-4 text-sm;
+    font-weight: 800;
   }
   .report p {
     @apply my-2;
@@ -120,18 +128,18 @@
   .report strong {
     @apply font-bold;
   }
-  /* 表：iOS調のヘアライン罫線＋ヘッダー淡色 */
+  /* 表：茶罫線＋濃いめの紙のヘッダー */
   .report table {
-    @apply my-3 w-full border-collapse overflow-hidden rounded-xl text-[13px];
+    @apply my-3 w-full border-collapse text-[13px];
   }
   .report th {
-    @apply border border-line bg-bg px-3 py-2 text-left font-semibold;
+    @apply border-2 border-line bg-[#eadac0] px-3 py-2 text-left font-bold;
   }
   .report td {
     @apply border border-line px-3 py-2 align-top;
   }
   .report blockquote {
-    @apply my-2 border-l-2 border-accent pl-3 text-muted;
+    @apply my-2 border-l-4 border-accent pl-3 text-muted;
   }
   .report code {
     @apply rounded bg-fill px-1 py-0.5 text-[12px];

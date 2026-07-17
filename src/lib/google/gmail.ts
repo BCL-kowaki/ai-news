@@ -79,7 +79,7 @@ export async function listRecentMail(
         unread: (d.labelIds ?? []).includes("UNREAD"),
         accountLabel: account.label,
         accountEmail: account.email,
-        colorHex: account.colorHex ?? "#007AFF",
+        colorHex: account.colorHex ?? "#709BAD",
         // アカウント指定つきでGmail本体のスレッドを開くURL
         gmailUrl: `https://mail.google.com/mail/u/${encodeURIComponent(account.email)}/#all/${d.threadId}`,
       };

@@ -117,7 +117,7 @@ export default async function SettingsPage({
                       <div className="flex items-center gap-3">
                         <span
                           className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: account.colorHex ?? "#007AFF" }}
+                          style={{ backgroundColor: account.colorHex ?? "#709BAD" }}
                           aria-hidden="true"
                         />
                         <span className="shrink-0 font-semibold">{account.label}</span>

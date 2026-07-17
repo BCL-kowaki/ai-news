@@ -66,7 +66,7 @@ export default async function CalendarSelectPage({
                     defaultChecked={
                       selected.has(calendar.id) || (calendar.primary && selected.has("primary"))
                     }
-                    className="h-5 w-5 rounded accent-[#007AFF]"
+                    className="h-5 w-5 rounded accent-[#C85E47]"
                   />
                   <span className="min-w-0 flex-1 truncate">{calendar.name}</span>
                   {calendar.primary && (

@@ -22,12 +22,13 @@ export const TIMEZONE = "Asia/Tokyo";
  * bg/fg はチップ（タグ）の背景色と文字色。文字色はコントラスト比4.5:1以上を守る。
  */
 export const CATEGORIES: { name: string; bg: string; fg: string }[] = [
-  { name: "AI全般", bg: "#EEF2FF", fg: "#4338CA" }, // インディゴ
-  { name: "研究", bg: "#ECFEFF", fg: "#0E7490" }, // シアン
-  { name: "プロダクト", bg: "#FFF7ED", fg: "#C2410C" }, // オレンジ
-  { name: "国内", bg: "#F0FDF4", fg: "#15803D" }, // グリーン
-  { name: "論文", bg: "#FAF5FF", fg: "#7E22CE" }, // パープル
-  { name: "動画", bg: "#FFF1F2", fg: "#BE123C" }, // ローズ
+  // エディトリアル調の暖色パステル（文字は共通の濃茶。枠線は .chip が付ける）
+  { name: "AI全般", bg: "#F4DFBD", fg: "#382C28" }, // アンバー
+  { name: "研究", bg: "#DCE9ED", fg: "#382C28" }, // ブルーグレー
+  { name: "プロダクト", bg: "#F4D5CD", fg: "#382C28" }, // テラコッタ
+  { name: "国内", bg: "#E0E7D7", fg: "#382C28" }, // セージ
+  { name: "論文", bg: "#E7DDEA", fg: "#382C28" }, // ラベンダー
+  { name: "動画", bg: "#F3E0CC", fg: "#382C28" }, // ピーチ
 ];
 
 /** カテゴリ名 → チップ配色。定義外のカテゴリはグレーにフォールバックする。 */
@@ -36,16 +37,16 @@ export const CATEGORY_STYLE: Record<string, { bg: string; fg: string }> = Object
 );
 
 /** 定義外カテゴリ用のチップ配色 */
-export const CATEGORY_STYLE_FALLBACK = { bg: "#F4F4F5", fg: "#52525B" };
+export const CATEGORY_STYLE_FALLBACK = { bg: "#EFE7D8", fg: "#382C28" };
 
 /**
  * タスクの優先度定義（単一定義元）
  * value はDBに保存する数値（大きいほど優先）。
  */
 export const TASK_PRIORITIES: { value: number; label: string; bg: string; fg: string }[] = [
-  { value: 2, label: "高", bg: "#FEF2F2", fg: "#DC2626" },
-  { value: 1, label: "中", bg: "#FFFBEB", fg: "#B45309" },
-  { value: 0, label: "低", bg: "#F4F4F5", fg: "#52525B" },
+  { value: 2, label: "高", bg: "#F4D5CD", fg: "#A84A36" }, // レンガ赤
+  { value: 1, label: "中", bg: "#F4DFBD", fg: "#8A5A1F" }, // アンバー
+  { value: 0, label: "低", bg: "#EFE7D8", fg: "#8A7A70" }, // 薄茶
 ];
 
 /** 優先度の数値 → 表示定義。定義外は「中」にフォールバックする。 */
@@ -65,14 +66,14 @@ export const MAIL_LIST_COUNT = 10;
 
 /**
  * Google連携アカウントの色プリセット（予定・メールの色分けに使う）
- * 連携した順にこの色が割り当てられる。iOSのシステムカラーに合わせている。
+ * 連携した順にこの色が割り当てられる。エディトリアル調の落ち着いた色。
  */
 export const GOOGLE_ACCOUNT_COLORS = [
-  "#007AFF", // ブルー（1人目＝個人など）
-  "#34C759", // グリーン（2人目＝会社など）
-  "#FF9500", // オレンジ
-  "#AF52DE", // パープル
-  "#FF2D55", // ピンク
+  "#709BAD", // ブルーグレー（1人目＝個人など）
+  "#8DA377", // セージグリーン（2人目＝会社など）
+  "#DF923F", // オレンジ
+  "#9A7BA8", // パープル
+  "#C85E47", // レンガ赤
 ];
 
 /** ニュース一覧（/news）で1ページに表示する件数 */
@@ -80,12 +81,12 @@ export const NEWS_LIST_COUNT = 30;
 
 /** 会議の処理状態 → 表示ラベル・チップ配色（単一定義元） */
 export const MEETING_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
-  recorded: { label: "未処理", bg: "#F4F4F5", fg: "#52525B" },
-  transcribing: { label: "文字起こし中…", bg: "#FFFBEB", fg: "#B45309" },
-  transcribed: { label: "文字起こし済み", bg: "#ECFEFF", fg: "#0E7490" },
-  summarizing: { label: "レポート生成中…", bg: "#FFFBEB", fg: "#B45309" },
-  done: { label: "レポート済み", bg: "#F0FDF4", fg: "#15803D" },
-  error: { label: "エラー", bg: "#FEF2F2", fg: "#DC2626" },
+  recorded: { label: "未処理", bg: "#EFE7D8", fg: "#8A7A70" },
+  transcribing: { label: "文字起こし中…", bg: "#F4DFBD", fg: "#8A5A1F" },
+  transcribed: { label: "文字起こし済み", bg: "#DCE9ED", fg: "#4A6B7A" },
+  summarizing: { label: "レポート生成中…", bg: "#F4DFBD", fg: "#8A5A1F" },
+  done: { label: "レポート済み", bg: "#E0E7D7", fg: "#556844" },
+  error: { label: "エラー", bg: "#F4D5CD", fg: "#A84A36" },
 };
 
 /** 会議状態の表示定義を返す（未知の状態はグレー） */

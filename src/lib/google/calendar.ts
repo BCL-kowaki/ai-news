@@ -164,7 +164,7 @@ export async function listTodayEvents(now: Date = new Date()): Promise<TodayEven
             end,
             accountLabel: account.label,
             accountEmail: account.email,
-            colorHex: account.colorHex ?? "#007AFF",
+            colorHex: account.colorHex ?? "#709BAD",
             calendarName,
             // メイン=アカウント表示名（会社/個人）、共有=カレンダー名（家族共用など）
             sourceLabel: isPrimary ? account.label : calendarName,
