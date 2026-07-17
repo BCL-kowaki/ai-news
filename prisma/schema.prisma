@@ -105,7 +105,7 @@ model Meeting {
   title                String
   recordedAt           DateTime // 録音開始日時（アップロードの場合は取り込み日時）
   durationSec          Int? // 録音の長さ（秒）。取得できた場合のみ
-  audioUrl             String // Vercel Blob上の音声ファイルURL
+  audioUrl             String? // Vercel Blob上の音声ファイルURL（文字起こし貼り付け取り込みの場合はnull）
   audioMime            String? // audio/webm, audio/mp4 など
   audioBytes           Int?
   status               String   @default("recorded") // recorded / transcribing / transcribed / summarizing / done / error

@@ -27,6 +27,12 @@ export async function POST(_request: Request, { params }: { params: { id: string
   if (!meeting) {
     return NextResponse.json({ error: "会議が見つかりません" }, { status: 404 });
   }
+  if (!meeting.audioUrl) {
+    return NextResponse.json(
+      { error: "この会議には音声がありません（貼り付け取り込み）" },
+      { status: 400 },
+    );
+  }
   if (meeting.status === "transcribing") {
     return NextResponse.json({ error: "文字起こしを実行中です" }, { status: 409 });
   }

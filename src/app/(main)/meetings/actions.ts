@@ -69,6 +69,32 @@ export async function createMeeting(
   return { ok: true, id: meeting.id, calendarMessage };
 }
 
+/**
+ * 文字起こしテキストの貼り付けで会議を登録する（音声なし）。
+ * 他ツールで文字起こし済みのテキストや議事メモをそのまま取り込み、レポート生成に進める。
+ */
+export async function createMeetingFromTranscript(formData: FormData): Promise<void> {
+  await assertLoggedIn();
+
+  const transcript = String(formData.get("transcript") ?? "").trim();
+  if (!transcript) return;
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, 100) || "会議";
+
+  const meeting = await prisma.meeting.create({
+    data: {
+      title,
+      recordedAt: new Date(),
+      transcript: transcript.slice(0, 200_000), // 念のための上限（約3時間の会議でも収まる）
+      status: "transcribed", // 文字起こし済みとして登録（すぐレポート生成できる）
+    },
+  });
+
+  await tryRegisterCalendar(meeting.id);
+  revalidateMeetingViews();
+  redirect(`/meetings/${meeting.id}`);
+}
+
 /** カレンダー登録（作成時の自動実行と、詳細画面からの再試行の両方で使う） */
 async function tryRegisterCalendar(meetingId: string): Promise<string> {
   const meeting = await prisma.meeting.findUnique({ where: { id: meetingId } });
@@ -123,10 +149,12 @@ export async function deleteMeeting(formData: FormData): Promise<void> {
   const meeting = await prisma.meeting.findUnique({ where: { id } });
   if (!meeting) return;
 
-  // 音声本体の削除。失敗してもDBの削除は続行（孤児ファイルは害が小さい）
-  await del(meeting.audioUrl).catch((e) => {
-    console.error("[会議] 音声ファイルの削除に失敗:", e);
-  });
+  // 音声本体の削除（貼り付け取り込みは音声なし）。失敗してもDBの削除は続行
+  if (meeting.audioUrl) {
+    await del(meeting.audioUrl).catch((e) => {
+      console.error("[会議] 音声ファイルの削除に失敗:", e);
+    });
+  }
   await prisma.meeting.delete({ where: { id } }).catch(() => {});
   revalidateMeetingViews();
   redirect("/meetings"); // 詳細ページから消した後に404にならないよう一覧へ戻す

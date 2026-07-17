@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { Mic, Square, Upload } from "lucide-react";
-import { createMeeting } from "./actions";
+import { ClipboardPaste, Mic, Square, Upload } from "lucide-react";
+import { SubmitButton } from "@/components/SubmitButton";
+import { createMeeting, createMeetingFromTranscript } from "./actions";
 
 /**
  * 会議の録音・音声取り込みカード
@@ -221,6 +222,40 @@ export function MeetingRecorder() {
         保存すると自動でGoogleカレンダーに「会議: 会議名」が登録されます（書き込み権限のあるアカウントがある場合）。
         文字起こしとレポート生成は保存後の詳細画面から実行できます。
       </p>
+
+      {/* 文字起こしテキストの貼り付け取り込み（音声なしで登録→すぐレポート生成できる） */}
+      <details className="mt-4 rounded-cell border-2 border-dashed border-line bg-fill">
+        <summary className="flex cursor-pointer items-center gap-1.5 px-4 py-3 text-sm font-bold text-ink [&::-webkit-details-marker]:hidden">
+          <ClipboardPaste className="h-4 w-4 text-accent" aria-hidden="true" />
+          文字起こしテキストを貼り付けて取り込む
+        </summary>
+        <form action={createMeetingFromTranscript} className="border-t-2 border-dashed border-line p-4">
+          <label htmlFor="paste-title" className="text-xs font-bold text-muted">
+            会議名
+          </label>
+          <input
+            id="paste-title"
+            name="title"
+            maxLength={100}
+            placeholder="例：定例ミーティング"
+            className="input mt-1"
+          />
+          <label htmlFor="paste-transcript" className="mt-3 block text-xs font-bold text-muted">
+            文字起こし・議事メモの本文
+          </label>
+          <textarea
+            id="paste-transcript"
+            name="transcript"
+            required
+            rows={8}
+            placeholder="他のツールで文字起こししたテキストや、手元の議事メモをそのまま貼り付け…"
+            className="input mt-1 resize-y"
+          />
+          <div className="mt-3 flex justify-end">
+            <SubmitButton pendingLabel="取り込み中…">取り込む</SubmitButton>
+          </div>
+        </form>
+      </details>
     </section>
   );
 }

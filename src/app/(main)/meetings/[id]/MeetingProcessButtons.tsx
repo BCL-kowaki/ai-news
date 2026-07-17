@@ -10,10 +10,12 @@ import { FileText, Sparkles } from "lucide-react";
  */
 export function MeetingProcessButtons({
   meetingId,
+  hasAudio,
   hasTranscript,
   isBusy,
 }: {
   meetingId: string;
+  hasAudio: boolean; // 音声なし（貼り付け取り込み）の場合は文字起こしボタンを出さない
   hasTranscript: boolean;
   isBusy: boolean; // サーバー側で transcribing / summarizing 中
 }) {
@@ -45,15 +47,17 @@ export function MeetingProcessButtons({
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => run("transcribe")}
-          disabled={disabled}
-          className="btn-primary"
-        >
-          <FileText className="h-4 w-4" aria-hidden="true" />
-          {hasTranscript ? "文字起こしをやり直す" : "文字起こしする"}
-        </button>
+        {hasAudio && (
+          <button
+            type="button"
+            onClick={() => run("transcribe")}
+            disabled={disabled}
+            className="btn-primary"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            {hasTranscript ? "文字起こしをやり直す" : "文字起こしする"}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => run("summarize")}

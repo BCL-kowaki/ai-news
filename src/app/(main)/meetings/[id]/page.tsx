@@ -24,8 +24,8 @@ export default async function MeetingDetailPage({ params }: { params: { id: stri
 
   const status = meetingStatusStyle(meeting.status);
   const isBusy = meeting.status === "transcribing" || meeting.status === "summarizing";
-  // Privateストアの音声を再生するための署名付きURL（1時間有効）
-  const playableUrl = await getReadableAudioUrl(meeting.audioUrl);
+  // Privateストアの音声を再生するための署名付きURL（1時間有効）。貼り付け取り込みは音声なし
+  const playableUrl = meeting.audioUrl ? await getReadableAudioUrl(meeting.audioUrl) : null;
 
   return (
     <main>
@@ -51,12 +51,19 @@ export default async function MeetingDetailPage({ params }: { params: { id: stri
 
       {/* 音声プレーヤー＋処理ボタン */}
       <section className="card mt-4 p-5">
-        <audio controls preload="metadata" src={playableUrl} className="w-full">
-          お使いのブラウザは音声再生に対応していません。
-        </audio>
+        {playableUrl ? (
+          <audio controls preload="metadata" src={playableUrl} className="w-full">
+            お使いのブラウザは音声再生に対応していません。
+          </audio>
+        ) : (
+          <p className="text-sm text-muted">
+            この会議は文字起こしテキストの取り込みで登録されました（音声なし）。
+          </p>
+        )}
         <div className="mt-4">
           <MeetingProcessButtons
             meetingId={meeting.id}
+            hasAudio={Boolean(meeting.audioUrl)}
             hasTranscript={Boolean(meeting.transcript)}
             isBusy={isBusy}
           />
