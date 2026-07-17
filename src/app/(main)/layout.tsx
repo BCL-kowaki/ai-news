@@ -3,7 +3,7 @@ import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/nextauth";
-import { DesktopNav, MobileTabBar } from "@/components/Nav";
+import { DesktopNav, MobileTabBar, SettingsLink } from "@/components/Nav";
 
 /**
  * ログイン後の全画面共通レイアウト
@@ -31,7 +31,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
               className="h-7 w-auto mix-blend-multiply"
             />
           </Link>
-          <DesktopNav />
+          <div className="flex items-center gap-2">
+            <DesktopNav />
+            {/* 設定は右上の歯車（スマホ・PC共通） */}
+            <SettingsLink />
+          </div>
         </div>
       </header>
 

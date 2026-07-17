@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { getJstDateKey } from "@/lib/datetime";
+import { formatJstTime, getJstDateKey } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
 import { listEventsBetween, type TodayEvent } from "@/lib/google/calendar";
-import { EventRow, type EventRowItem } from "@/components/EventRow";
+import { CalendarView, type CalendarDay, type CalendarEvent } from "./CalendarView";
 
 /**
  * カレンダーページ（/calendar）— 月間グリッド表示
@@ -11,12 +11,11 @@ import { EventRow, type EventRowItem } from "@/components/EventRow";
  * - 前後の月へ移動でき、過去の予定も見られる（?month=YYYY-MM）
  * - Googleカレンダーの予定（全連携アカウント）に加えて、SERAの会議記録も表示
  *   （赤い「会議」チップ。タップで会議詳細＝文字起こし・レポートへ）
- * - 日付を押すと、その日の予定一覧を下に表示（?day=YYYY-MM-DD）
+ * - 日付の選択はクライアント側で即切り替え（CalendarView）。月の移動だけサーバー再取得
  */
 
 export const dynamic = "force-dynamic";
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MEETING_COLOR = "#C85E47"; // 会議記録のチップ色（アクセント赤）
 
@@ -60,17 +59,14 @@ export default async function CalendarPage({
   const gridStart = new Date(
     new Date(`${monthStartKey}T00:00:00+09:00`).getTime() - jstDayOfWeek(monthStartKey) * DAY_MS,
   );
-  const gridDays: { key: string; inMonth: boolean; isToday: boolean }[] = Array.from(
-    { length: 42 },
-    (_, i) => {
-      const key = getJstDateKey(new Date(gridStart.getTime() + i * DAY_MS + 12 * 60 * 60 * 1000)); // 正午基準でDST等の揺れを回避
-      return { key, inMonth: key.startsWith(month), isToday: key === todayKey };
-    },
-  );
+  const gridDays: CalendarDay[] = Array.from({ length: 42 }, (_, i) => {
+    const key = getJstDateKey(new Date(gridStart.getTime() + i * DAY_MS + 12 * 60 * 60 * 1000)); // 正午基準で揺れを回避
+    return { key, inMonth: key.startsWith(month), isToday: key === todayKey };
+  });
   const gridEnd = new Date(gridStart.getTime() + 42 * DAY_MS);
 
-  // 選択日（未指定なら「今日がこの月なら今日、違う月なら1日」）
-  const selectedDay =
+  // 選択日の初期値（未指定なら「今日がこの月なら今日、違う月なら1日」）
+  const initialSelectedDay =
     searchParams.day && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.day)
       ? searchParams.day
       : month === currentMonth
@@ -92,37 +88,53 @@ export default async function CalendarPage({
     prisma.googleAccount.count().catch(() => 0),
   ]);
 
-  // 会議記録を予定と同じ形に変換（タップで詳細へ）
-  const meetingEvents: EventRowItem[] = meetings.map((m) => ({
-    id: `meeting:${m.id}`,
-    title: m.title,
-    allDay: false,
-    start: m.recordedAt,
-    end: m.durationSec ? new Date(m.recordedAt.getTime() + m.durationSec * 1000) : null,
-    accountLabel: "会議",
-    accountEmail: "",
-    colorHex: MEETING_COLOR,
-    calendarName: "会議記録",
-    sourceLabel: "会議",
-    href: `/meetings/${m.id}`,
-  }));
-
-  // 日付キー → その日の予定（時刻順。終日が先頭）
-  const byDay = new Map<string, EventRowItem[]>();
-  for (const event of [...googleEvents, ...meetingEvents]) {
-    const key = getJstDateKey(event.start);
-    byDay.set(key, [...(byDay.get(key) ?? []), event]);
-  }
-  byDay.forEach((events, key) => {
-    byDay.set(
-      key,
-      events.sort((a, b) =>
-        a.allDay !== b.allDay ? (a.allDay ? -1 : 1) : a.start.getTime() - b.start.getTime(),
-      ),
-    );
+  // クライアントへ渡す形に変換（Dateは表示用ラベルへ）
+  const toEvent = (e: TodayEvent, href?: string): CalendarEvent & { startMs: number } => ({
+    id: e.id,
+    title: e.title,
+    allDay: e.allDay,
+    startLabel: formatJstTime(e.start),
+    endLabel: e.end ? formatJstTime(e.end) : null,
+    sourceLabel: e.sourceLabel,
+    colorHex: e.colorHex,
+    href,
+    startMs: e.start.getTime(),
   });
 
-  const selectedEvents = byDay.get(selectedDay) ?? [];
+  const allEvents = [
+    ...googleEvents.map((e) => ({ event: toEvent(e), dateKey: getJstDateKey(e.start) })),
+    ...meetings.map((m) => ({
+      event: toEvent(
+        {
+          id: `meeting:${m.id}`,
+          title: m.title,
+          allDay: false,
+          start: m.recordedAt,
+          end: m.durationSec ? new Date(m.recordedAt.getTime() + m.durationSec * 1000) : null,
+          accountLabel: "会議",
+          accountEmail: "",
+          colorHex: MEETING_COLOR,
+          calendarName: "会議記録",
+          sourceLabel: "会議",
+        },
+        `/meetings/${m.id}`,
+      ),
+      dateKey: getJstDateKey(m.recordedAt),
+    })),
+  ];
+
+  // 日付キー → その日の予定（終日→時刻順）
+  const eventsByDay: Record<string, CalendarEvent[]> = {};
+  for (const { event, dateKey } of allEvents) {
+    (eventsByDay[dateKey] ??= []).push(event);
+  }
+  for (const key of Object.keys(eventsByDay)) {
+    eventsByDay[key].sort((a, b) => {
+      if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+      return (a as CalendarEvent & { startMs: number }).startMs -
+        (b as CalendarEvent & { startMs: number }).startMs;
+    });
+  }
 
   return (
     <main>
@@ -159,109 +171,14 @@ export default async function CalendarPage({
           </Link>
         </div>
       ) : (
-        <>
-          {/* 月間グリッド */}
-          <section className="card mt-4 overflow-hidden" aria-label={monthLabel(month)}>
-            <h2 className="border-b-2 border-line px-4 py-3 text-base font-bold">
-              {monthLabel(month)}
-            </h2>
-            <div className="grid grid-cols-7 border-b border-line text-center">
-              {WEEKDAYS.map((w, i) => (
-                <div
-                  key={w}
-                  className={`py-1.5 text-xs font-bold ${
-                    i === 0 ? "text-accent" : i === 6 ? "text-[#4A6B7A]" : "text-muted"
-                  }`}
-                >
-                  {w}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {gridDays.map((day) => {
-                const events = byDay.get(day.key) ?? [];
-                const selected = day.key === selectedDay;
-                return (
-                  <Link
-                    key={day.key}
-                    href={`/calendar?month=${month}&day=${day.key}`}
-                    aria-label={`${day.key}の予定${events.length > 0 ? `（${events.length}件）` : ""}`}
-                    className={`min-h-16 border-b border-r border-line/60 p-1 align-top transition-colors duration-150 hover:bg-bg sm:min-h-20 ${
-                      day.inMonth ? "" : "opacity-35"
-                    } ${selected ? "bg-accent-soft/60" : ""}`}
-                  >
-                    <span
-                      className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold sm:mx-0 ${
-                        day.isToday ? "bg-accent text-card" : ""
-                      }`}
-                    >
-                      {Number(day.key.slice(8))}
-                    </span>
-                    {/* 予定：PCはタイトル・スマホはドットで表示 */}
-                    <span className="mt-0.5 hidden sm:block">
-                      {events.slice(0, 3).map((e) => (
-                        <span
-                          key={e.id}
-                          className="mb-0.5 block truncate rounded px-1 text-[10px] font-semibold leading-4"
-                          style={{ backgroundColor: `${e.colorHex}22`, color: e.colorHex }}
-                        >
-                          {e.title}
-                        </span>
-                      ))}
-                      {events.length > 3 && (
-                        <span className="block px-1 text-[10px] text-faint">
-                          +{events.length - 3}件
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-1 flex flex-wrap justify-center gap-0.5 sm:hidden">
-                      {events.slice(0, 4).map((e) => (
-                        <span
-                          key={e.id}
-                          className="h-1.5 w-1.5 rounded-full"
-                          style={{ backgroundColor: e.colorHex }}
-                        />
-                      ))}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* 選択した日の予定 */}
-          <section className="card mt-4 p-5">
-            <h2 className="card-title">
-              {formatDayHeading(selectedDay)}
-              {selectedDay === todayKey && (
-                <span className="chip bg-accent-soft text-accent">今日</span>
-              )}
-            </h2>
-            {selectedEvents.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">この日の予定はありません。</p>
-            ) : (
-              <ul className="mt-1 divide-y divide-line">
-                {selectedEvents.map((event) => (
-                  <EventRow key={event.id} event={event} />
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
+        <CalendarView
+          monthLabel={monthLabel(month)}
+          gridDays={gridDays}
+          eventsByDay={eventsByDay}
+          todayKey={todayKey}
+          initialSelectedDay={initialSelectedDay}
+        />
       )}
     </main>
   );
-}
-
-/** "7月18日（土）" 形式 */
-function formatDayHeading(dateKey: string): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  })
-    .format(new Date(`${dateKey}T12:00:00+09:00`))
-    .replace("(", "（")
-    .replace(")", "）");
 }

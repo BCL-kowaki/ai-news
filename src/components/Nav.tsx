@@ -20,6 +20,7 @@ import {
  * 現在地のタブはiOSブルーでハイライトする。
  */
 
+// 設定はタブではなくヘッダー右上の歯車アイコン（SettingsLink）に置く
 const NAV_ITEMS = [
   { href: "/", label: "ホーム", icon: LayoutDashboard },
   { href: "/calendar", label: "カレンダー", icon: CalendarDays },
@@ -27,8 +28,25 @@ const NAV_ITEMS = [
   { href: "/tasks", label: "タスク", icon: ListTodo },
   { href: "/memos", label: "メモ", icon: StickyNote },
   { href: "/meetings", label: "会議", icon: Mic },
-  { href: "/settings", label: "設定", icon: Settings },
 ] as const;
+
+/** ヘッダー右上の設定アイコン（スマホ・PC共通） */
+export function SettingsLink() {
+  const pathname = usePathname();
+  const active = pathname.startsWith("/settings");
+  return (
+    <Link
+      href="/settings"
+      aria-label="設定"
+      aria-current={active ? "page" : undefined}
+      className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-150 active:opacity-60 ${
+        active ? "bg-accent-soft text-accent" : "text-muted hover:text-ink"
+      }`}
+    >
+      <Settings className="h-5 w-5" aria-hidden="true" />
+    </Link>
+  );
+}
 
 /** 現在地の判定（/news/xxx でも「ニュース」を光らせる） */
 function isActive(pathname: string, href: string): boolean {
