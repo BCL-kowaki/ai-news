@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Star, Trash2 } from "lucide-react";
+import { Check, Star, Undo2 } from "lucide-react";
 import {
-  deleteArticle,
   summarizeArticle,
   toggleFavoriteArticle,
+  toggleReadArticle,
   translateArticle,
 } from "@/app/actions";
 
@@ -28,6 +28,7 @@ export type ArticleRow = {
   publishedLabel: string;
   hasContent: boolean;
   favorite: boolean;
+  read: boolean;
 };
 
 type ResultState = { kind: "translate" | "summarize"; ok: boolean; text: string } | null;
@@ -49,7 +50,7 @@ function ArticleItem({ article }: { article: ArticleRow }) {
   const [active, setActive] = useState<"translate" | "summarize" | null>(null);
   const [result, setResult] = useState<ResultState>(null);
   const [favorite, setFavorite] = useState(article.favorite);
-  const [removed, setRemoved] = useState(false); // 削除後は一覧から即座に消す
+  const [hidden, setHidden] = useState(false); // 既読にした直後は一覧から即座に隠す
 
   /** お気に入りの切り替え（表示は即時反映＝楽観更新、サーバー結果で最終確定） */
   function toggleFavorite() {
@@ -60,19 +61,19 @@ function ArticleItem({ article }: { article: ArticleRow }) {
     });
   }
 
-  /** 記事の削除（読み終わったものを片付ける） */
-  function remove() {
+  /**
+   * 既読／未読の切り替え。
+   * 未読一覧で既読にしたら隠す（削除ではないので「既読」タブから見返せる）。
+   * 既読一覧で未読に戻した場合も同様に、その一覧からは消える。
+   */
+  function toggleRead() {
+    setHidden(true);
     startTransition(async () => {
-      const res = await deleteArticle(article.id);
-      if (res.ok) {
-        setRemoved(true);
-      } else {
-        setResult({ kind: "summarize", ok: false, text: res.error ?? "削除できませんでした" });
-      }
+      await toggleReadArticle(article.id);
     });
   }
 
-  if (removed) return null;
+  if (hidden) return null;
 
   function run(kind: "translate" | "summarize") {
     setActive(kind);
@@ -148,16 +149,20 @@ function ArticleItem({ article }: { article: ArticleRow }) {
           >
             要約
           </button>
-          {/* 読み終わった記事の削除（お気に入りは削除不可） */}
+          {/* 既読／未読の切り替え（削除ではないので「既読」タブから見返せる） */}
           <button
             type="button"
-            onClick={remove}
-            disabled={isPending || favorite}
-            aria-label="この記事を削除"
-            title={favorite ? "お気に入りは削除できません" : "読み終わったので削除"}
+            onClick={toggleRead}
+            disabled={isPending}
+            aria-label={article.read ? "未読に戻す" : "既読にする"}
+            title={article.read ? "未読に戻す" : "読み終わった（一覧から隠す）"}
             className="-m-1 cursor-pointer p-1 text-faint transition-colors duration-150 hover:text-accent disabled:cursor-default disabled:opacity-30"
           >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {article.read ? (
+              <Undo2 className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Check className="h-4 w-4" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>

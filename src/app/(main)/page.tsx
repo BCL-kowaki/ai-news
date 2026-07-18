@@ -348,6 +348,7 @@ async function loadDashboard() {
         }),
         prisma.task.count({ where: { status: "open" } }),
         prisma.article.findMany({
+          where: { readAt: null }, // 未読だけ（既読は /news?filter=read で見返す）
           orderBy: { publishedAt: "desc" },
           take: DASHBOARD_NEWS_COUNT,
           include: { source: { select: { name: true, category: true } } },

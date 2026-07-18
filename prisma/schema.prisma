@@ -40,6 +40,7 @@ model Article {
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）
   favoritedAt DateTime? // お気に入りに追加した日時（null=お気に入りでない）
+  readAt      DateTime? // 既読にした日時（null=未読）。既読は一覧から隠れるが履歴として残る
   fetchedAt   DateTime  @default(now())
   sentAt      DateTime?
 

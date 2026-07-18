@@ -63,7 +63,8 @@ export default async function NewsCategoryPage({
 async function loadArticles(category: string): Promise<ArticleRow[] | null> {
   try {
     const articles = await prisma.article.findMany({
-      where: { source: { category } },
+      // ジャンル一覧も未読のみ（既読は /news?filter=read から見返す）
+      where: { source: { category }, readAt: null },
       orderBy: { publishedAt: "desc" },
       include: { source: { select: { name: true, category: true } } },
     });
@@ -78,6 +79,7 @@ async function loadArticles(category: string): Promise<ArticleRow[] | null> {
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),
       favorite: a.favoritedAt !== null,
+      read: a.readAt !== null,
     }));
   } catch (error) {
     console.error("[ジャンル一覧] 取得失敗:", error);

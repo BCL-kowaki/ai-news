@@ -79,25 +79,45 @@ export async function learnPreference(): Promise<{ ok: boolean; message: string 
 }
 
 /**
- * 記事を削除する（読み終わったものを片付ける用）。
- * お気に入り（★）を付けた記事は誤操作防止のため削除しない。
+ * 記事の既読を切り替える（読み終わったものを一覧から隠す）。
+ * 削除ではないので、いつでも「既読」タブから見返せる。
  */
-export async function deleteArticle(articleId: string): Promise<{ ok: boolean; error?: string }> {
+export async function toggleReadArticle(articleId: string): Promise<{ read: boolean }> {
   await assertLoggedIn();
 
   const article = await prisma.article.findUnique({
     where: { id: articleId },
-    select: { favoritedAt: true },
+    select: { readAt: true },
   });
-  if (!article) return { ok: true }; // 既に無い場合は成功扱い
-  if (article.favoritedAt !== null) {
-    return { ok: false, error: "お気に入りの記事は削除できません（★を外してから削除してください）" };
-  }
+  if (!article) return { read: false };
 
-  await prisma.article.delete({ where: { id: articleId } }).catch(() => {});
+  const read = article.readAt === null;
+  await prisma.article.update({
+    where: { id: articleId },
+    data: { readAt: read ? new Date() : null },
+  });
   revalidatePath("/news");
   revalidatePath("/");
-  return { ok: true };
+  return { read };
+}
+
+/**
+ * 表示中の記事をまとめて既読にする（読み終わったらワンタップで片付ける）。
+ * お気に入り（★）はそのまま残る（既読にしても一覧では隠れるだけ）。
+ */
+export async function markArticlesRead(articleIds: string[]): Promise<{ count: number }> {
+  await assertLoggedIn();
+
+  const ids = articleIds.filter((id) => typeof id === "string").slice(0, 500);
+  if (ids.length === 0) return { count: 0 };
+
+  const result = await prisma.article.updateMany({
+    where: { id: { in: ids }, readAt: null },
+    data: { readAt: new Date() },
+  });
+  revalidatePath("/news");
+  revalidatePath("/");
+  return { count: result.count };
 }
 
 /**
