@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Star } from "lucide-react";
-import { summarizeArticle, toggleFavoriteArticle, translateArticle } from "@/app/actions";
+import { Star, Trash2 } from "lucide-react";
+import {
+  deleteArticle,
+  summarizeArticle,
+  toggleFavoriteArticle,
+  translateArticle,
+} from "@/app/actions";
 
 /**
  * 記事一覧（レスポンシブ）
@@ -44,6 +49,7 @@ function ArticleItem({ article }: { article: ArticleRow }) {
   const [active, setActive] = useState<"translate" | "summarize" | null>(null);
   const [result, setResult] = useState<ResultState>(null);
   const [favorite, setFavorite] = useState(article.favorite);
+  const [removed, setRemoved] = useState(false); // 削除後は一覧から即座に消す
 
   /** お気に入りの切り替え（表示は即時反映＝楽観更新、サーバー結果で最終確定） */
   function toggleFavorite() {
@@ -53,6 +59,20 @@ function ArticleItem({ article }: { article: ArticleRow }) {
       setFavorite(res.favorite);
     });
   }
+
+  /** 記事の削除（読み終わったものを片付ける） */
+  function remove() {
+    startTransition(async () => {
+      const res = await deleteArticle(article.id);
+      if (res.ok) {
+        setRemoved(true);
+      } else {
+        setResult({ kind: "summarize", ok: false, text: res.error ?? "削除できませんでした" });
+      }
+    });
+  }
+
+  if (removed) return null;
 
   function run(kind: "translate" | "summarize") {
     setActive(kind);
@@ -127,6 +147,17 @@ function ArticleItem({ article }: { article: ArticleRow }) {
             className="btn-ghost"
           >
             要約
+          </button>
+          {/* 読み終わった記事の削除（お気に入りは削除不可） */}
+          <button
+            type="button"
+            onClick={remove}
+            disabled={isPending || favorite}
+            aria-label="この記事を削除"
+            title={favorite ? "お気に入りは削除できません" : "読み終わったので削除"}
+            className="-m-1 cursor-pointer p-1 text-faint transition-colors duration-150 hover:text-accent disabled:cursor-default disabled:opacity-30"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>

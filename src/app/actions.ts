@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
+import { learnNewsPreference } from "@/lib/news-preference";
 import { summarizeToJa } from "@/lib/summarize";
 import { translateOneToJa } from "@/lib/translate";
 
@@ -62,6 +63,41 @@ export async function toggleFavoriteArticle(articleId: string): Promise<{ favori
   });
   revalidatePath("/news");
   return { favorite };
+}
+
+/**
+ * お気に入りの傾向をAIに学習させる（おすすめ判定のキーワードを更新）。
+ */
+export async function learnPreference(): Promise<{ ok: boolean; message: string }> {
+  await assertLoggedIn();
+
+  const result = await learnNewsPreference();
+  revalidatePath("/news");
+  return result.ok
+    ? { ok: true, message: `学習しました：${result.summary ?? ""}` }
+    : { ok: false, message: result.error ?? "学習に失敗しました" };
+}
+
+/**
+ * 記事を削除する（読み終わったものを片付ける用）。
+ * お気に入り（★）を付けた記事は誤操作防止のため削除しない。
+ */
+export async function deleteArticle(articleId: string): Promise<{ ok: boolean; error?: string }> {
+  await assertLoggedIn();
+
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+    select: { favoritedAt: true },
+  });
+  if (!article) return { ok: true }; // 既に無い場合は成功扱い
+  if (article.favoritedAt !== null) {
+    return { ok: false, error: "お気に入りの記事は削除できません（★を外してから削除してください）" };
+  }
+
+  await prisma.article.delete({ where: { id: articleId } }).catch(() => {});
+  revalidatePath("/news");
+  revalidatePath("/");
+  return { ok: true };
 }
 
 /**

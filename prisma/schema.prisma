@@ -148,6 +148,15 @@ model Meeting {
   @@index([recordedAt])
 }
 
+/// ニュースの好み（お気に入りから学習した傾向）。1レコードのみ運用（id="default"）。
+model NewsPreference {
+  id            String   @id @default("default")
+  keywords      Json // 重視するキーワード配列（例: ["エージェント","論文","評価"]）
+  summary       String // 好みの傾向（画面表示用の短い説明）
+  favoriteCount Int      @default(0) // 学習に使ったお気に入り件数
+  updatedAt     DateTime @updatedAt
+}
+
 /// プッシュ通知の購読先（ブラウザ/スマホごとに1件）。ブリーフィング完成時などに送る。
 model PushSubscription {
   id        String   @id @default(cuid())
