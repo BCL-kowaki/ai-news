@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Sparkles, Star } from "lucide-react";
+import { Bookmark, Check, Sparkles, Star } from "lucide-react";
 import { CATEGORIES, CATEGORY_STYLE_FALLBACK, NEWS_LIST_COUNT } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
@@ -12,11 +12,17 @@ import { MarkAllReadButton } from "./MarkAllReadButton";
 /**
  * ニュース一覧ページ（/news）
  *
- * 既定は「未読のみ」表示。チェックボタンで既読にすると一覧から隠れる（削除ではない）。
- * - `?filter=read` … 既読の記事を見返す
- * - `?filter=fav`  … お気に入り（★）だけ表示（既読・未読を問わない）
- * - `?filter=reco` … おすすめ（お気に入りの傾向に近い未読記事）
+ * 既定は「受信箱」＝まだ片付けていない記事だけを表示する。
+ * ★お気に入り／🔖後で見る／✓既読 のいずれかを選ぶと受信箱から隠れ（アーカイブ）、
+ * それぞれのタブから見返せる（削除ではない）。
+ * - `?filter=fav`  … お気に入り
+ * - `?filter=save` … 後で見る
+ * - `?filter=read` … 既読
+ * - `?filter=reco` … おすすめ（お気に入りの傾向に近い、受信箱の記事）
  */
+
+/** 受信箱の条件：3つの片付けフラグがどれも立っていない記事 */
+const INBOX_WHERE = { favoritedAt: null, savedAt: null, readAt: null } as const;
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +47,7 @@ export default async function NewsPage({
         <FetchNewsButton />
       </div>
       <p className="mt-1 text-[13px] text-muted">
-        毎時自動収集。読み終わったらチェック（✓）で片付け、★は保存。既読はいつでも見返せます。
+        毎時自動収集。★お気に入り・🔖後で見る・✓既読 のどれかを選ぶと受信箱から片付きます（削除ではなく各タブで見返せます）。
       </p>
 
       {data === null ? (
@@ -56,7 +62,7 @@ export default async function NewsPage({
                 !filter ? "bg-ink !text-card" : "bg-card text-muted"
               }`}
             >
-              未読
+              受信箱
               <span className="opacity-70">{data.unreadCount}</span>
             </Link>
 
@@ -74,6 +80,22 @@ export default async function NewsPage({
               />
               お気に入り
               <span className="opacity-70">{data.favoriteCount}</span>
+            </Link>
+
+            <Link
+              href={filter === "save" ? "/news" : "/news?filter=save"}
+              className={`chip cursor-pointer transition-opacity duration-200 hover:opacity-80 ${
+                filter === "save" ? "bg-[#709BAD] !text-card" : "bg-card"
+              }`}
+              style={filter === "save" ? undefined : { color: "#4A6B7A" }}
+            >
+              <Bookmark
+                className="h-3 w-3"
+                fill={filter === "save" ? "currentColor" : "#709BAD"}
+                aria-hidden="true"
+              />
+              後で見る
+              <span className="opacity-70">{data.savedCount}</span>
             </Link>
 
             {/* おすすめ（好みを学習済みのときだけ出す） */}
@@ -130,14 +152,27 @@ export default async function NewsPage({
             <p className="mt-8 text-sm text-muted">
               {filter === "fav"
                 ? "お気に入りはまだありません。記事の★を押すと、ここに保存されます。"
-                : filter === "read"
-                  ? "既読の記事はまだありません。"
-                  : filter === "reco"
-                    ? "おすすめに合う未読記事がありません。「今すぐ取得」で新着を集めてみてください。"
-                    : "未読の記事はありません。すべて読み終わりました 🎉"}
+                : filter === "save"
+                  ? "「後で見る」はまだありません。記事の🔖を押すと、ここに入ります。"
+                  : filter === "read"
+                    ? "既読の記事はまだありません。"
+                    : filter === "reco"
+                      ? "おすすめに合う記事がありません。「今すぐ取得」で新着を集めてみてください。"
+                      : "受信箱は空です。すべて片付きました 🎉"}
             </p>
           ) : (
-            <ArticleTable articles={data.articles} />
+            <ArticleTable
+              articles={data.articles}
+              view={
+                filter === "fav"
+                  ? "fav"
+                  : filter === "save"
+                    ? "save"
+                    : filter === "read"
+                      ? "read"
+                      : "inbox"
+              }
+            />
           )}
         </>
       )}
@@ -148,43 +183,51 @@ export default async function NewsPage({
 async function loadNews(filter: string | undefined) {
   try {
     const favOnly = filter === "fav";
+    const savedOnly = filter === "save";
     const readOnly = filter === "read";
     const recoOnly = filter === "reco";
 
-    const [preference, favoriteCount, unreadCount, readCount, genreCounts] = await Promise.all([
-      getNewsPreference(),
-      prisma.article.count({ where: { favoritedAt: { not: null } } }),
-      prisma.article.count({ where: { readAt: null } }),
-      prisma.article.count({ where: { readAt: { not: null } } }),
-      Promise.all(
-        CATEGORIES.map(async (c) => ({
-          name: c.name,
-          bg: c.bg,
-          fg: c.fg,
-          // ジャンル件数は未読ベース（片付けた分は減る）
-          count: await prisma.article.count({
-            where: { source: { category: c.name }, readAt: null },
-          }),
-        })),
-      ),
-    ]);
+    const [preference, favoriteCount, savedCount, unreadCount, readCount, genreCounts] =
+      await Promise.all([
+        getNewsPreference(),
+        prisma.article.count({ where: { favoritedAt: { not: null } } }),
+        prisma.article.count({ where: { savedAt: { not: null } } }),
+        // 受信箱の件数（まだ片付けていない記事）
+        prisma.article.count({ where: INBOX_WHERE }),
+        prisma.article.count({ where: { readAt: { not: null } } }),
+        Promise.all(
+          CATEGORIES.map(async (c) => ({
+            name: c.name,
+            bg: c.bg,
+            fg: c.fg,
+            // ジャンル件数は受信箱ベース（片付けた分は減る）
+            count: await prisma.article.count({
+              where: { source: { category: c.name }, ...INBOX_WHERE },
+            }),
+          })),
+        ),
+      ]);
 
-    // 絞り込み条件：お気に入りは既読も含む／それ以外は未読のみ
+    // 絞り込み条件：各タブはその状態の記事／既定は受信箱（3つとも未設定）
     const where = favOnly
       ? { favoritedAt: { not: null } }
-      : readOnly
-        ? { readAt: { not: null } }
-        : { readAt: null };
+      : savedOnly
+        ? { savedAt: { not: null } }
+        : readOnly
+          ? { readAt: { not: null } }
+          : INBOX_WHERE;
 
     const articles = await prisma.article.findMany({
       where,
       orderBy: favOnly
         ? { favoritedAt: "desc" }
-        : readOnly
-          ? { readAt: "desc" }
-          : { publishedAt: "desc" },
+        : savedOnly
+          ? { savedAt: "desc" }
+          : readOnly
+            ? { readAt: "desc" }
+            : { publishedAt: "desc" },
       // おすすめは広めに取ってスコア順に絞る
-      take: recoOnly ? 200 : favOnly || readOnly ? 100 : NEWS_LIST_COUNT,
+      take: recoOnly ? 200 : favOnly || savedOnly || readOnly ? 100 : NEWS_LIST_COUNT,
       include: { source: { select: { name: true, category: true } } },
     });
 
@@ -199,6 +242,7 @@ async function loadNews(filter: string | undefined) {
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),
       favorite: a.favoritedAt !== null,
+      saved: a.savedAt !== null,
       read: a.readAt !== null,
     });
 
@@ -224,7 +268,15 @@ async function loadNews(filter: string | undefined) {
       rows = articles.map(toRow);
     }
 
-    return { articles: rows, favoriteCount, unreadCount, readCount, genres: genreCounts, preference };
+    return {
+      articles: rows,
+      favoriteCount,
+      savedCount,
+      unreadCount,
+      readCount,
+      genres: genreCounts,
+      preference,
+    };
   } catch (error) {
     console.error("[ニュース一覧] 取得失敗:", error);
     return null;

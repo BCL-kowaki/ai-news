@@ -62,7 +62,31 @@ export async function toggleFavoriteArticle(articleId: string): Promise<{ favori
     data: { favoritedAt: favorite ? new Date() : null },
   });
   revalidatePath("/news");
+  revalidatePath("/");
   return { favorite };
+}
+
+/**
+ * 「後で見る」の切り替え。
+ * 入れると未読一覧から隠れ、「後で見る」タブから見返せる（削除ではない）。
+ */
+export async function toggleSaveArticle(articleId: string): Promise<{ saved: boolean }> {
+  await assertLoggedIn();
+
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+    select: { savedAt: true },
+  });
+  if (!article) return { saved: false };
+
+  const saved = article.savedAt === null;
+  await prisma.article.update({
+    where: { id: articleId },
+    data: { savedAt: saved ? new Date() : null },
+  });
+  revalidatePath("/news");
+  revalidatePath("/");
+  return { saved };
 }
 
 /**

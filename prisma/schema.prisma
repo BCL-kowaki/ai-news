@@ -39,8 +39,11 @@ model Article {
   url         String    @unique // 重複排除のキー
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）
+  // 以下3つは「受信箱（未読一覧）から片付ける」ためのフラグ。
+  // いずれかが立つと未読一覧からは隠れ、それぞれの専用タブから見返せる（削除ではない）。
   favoritedAt DateTime? // お気に入りに追加した日時（null=お気に入りでない）
-  readAt      DateTime? // 既読にした日時（null=未読）。既読は一覧から隠れるが履歴として残る
+  savedAt     DateTime? // 「後で見る」に入れた日時（null=入れていない）
+  readAt      DateTime? // 既読にした日時（null=未読）
   fetchedAt   DateTime  @default(now())
   sentAt      DateTime?
 

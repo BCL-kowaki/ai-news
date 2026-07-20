@@ -350,7 +350,8 @@ async function loadDashboard() {
         }),
         prisma.task.count({ where: { status: "open" } }),
         prisma.article.findMany({
-          where: { readAt: null }, // 未読だけ（既読は /news?filter=read で見返す）
+          // 受信箱だけ（★・🔖・✓で片付けた記事は /news の各タブから見返す）
+          where: { favoritedAt: null, savedAt: null, readAt: null },
           orderBy: { publishedAt: "desc" },
           take: DASHBOARD_NEWS_COUNT,
           include: { source: { select: { name: true, category: true } } },
