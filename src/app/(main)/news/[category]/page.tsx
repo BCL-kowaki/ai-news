@@ -5,6 +5,7 @@ import { CATEGORIES, CATEGORY_STYLE, CATEGORY_STYLE_FALLBACK } from "@/lib/confi
 import { formatJstDateTime } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
 import { ArticleTable, type ArticleRow } from "@/components/ArticleTable";
+import { NewsAudioButton } from "@/components/NewsAudioButton";
 
 /**
  * ジャンル別の記事一覧ページ（/news/[category]）
@@ -12,6 +13,8 @@ import { ArticleTable, type ArticleRow } from "@/components/ArticleTable";
  */
 
 export const dynamic = "force-dynamic";
+// 音声生成（原稿AI＋TTS）に時間がかかるため、このページ経由のサーバーアクションの上限を延ばす
+export const maxDuration = 300;
 
 export default async function NewsCategoryPage({
   params,
@@ -48,6 +51,18 @@ export default async function NewsCategoryPage({
           {articles?.length ?? 0} 件
         </span>
       </h1>
+
+      {/* このジャンルの受信箱をまとめて音声で聞く（通勤中向け） */}
+      {articles !== null && articles.length > 0 && (
+        <div className="mt-3">
+          <NewsAudioButton
+            scope={{ type: "category", category }}
+            variant="button"
+            label="このジャンルを聞く"
+            mediaTitle={`${category}のニュース`}
+          />
+        </div>
+      )}
 
       {articles === null ? (
         <p className="card mt-6 p-4 text-sm text-red-600">DBに接続できませんでした。</p>

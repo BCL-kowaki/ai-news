@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Bookmark, Check, Star, Undo2 } from "lucide-react";
+import { NewsAudioButton } from "@/components/NewsAudioButton";
 import {
   summarizeArticle,
   toggleFavoriteArticle,
@@ -204,6 +205,12 @@ function ArticleItem({ article, view }: { article: ArticleRow; view: ArticleView
           >
             要約
           </button>
+
+          {/* この記事を音声で聞く（通勤中向け） */}
+          <NewsAudioButton
+            scope={{ type: "article", articleId: article.id }}
+            mediaTitle={article.title}
+          />
 
           {/* 既読／未読の切り替え */}
           <button

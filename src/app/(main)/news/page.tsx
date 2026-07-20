@@ -7,6 +7,7 @@ import { getNewsPreference } from "@/lib/news-preference";
 import { ArticleTable, type ArticleRow } from "@/components/ArticleTable";
 import { FetchNewsButton } from "./FetchNewsButton";
 import { LearnPreferenceButton } from "./LearnPreferenceButton";
+import { NewsAudioButton } from "@/components/NewsAudioButton";
 import { MarkAllReadButton } from "./MarkAllReadButton";
 
 /**
@@ -25,6 +26,8 @@ import { MarkAllReadButton } from "./MarkAllReadButton";
 const INBOX_WHERE = { favoritedAt: null, savedAt: null, readAt: null } as const;
 
 export const dynamic = "force-dynamic";
+// 音声生成（原稿AI＋TTS）に時間がかかるため、このページ経由のサーバーアクションの上限を延ばす
+export const maxDuration = 300;
 
 /** 記事がキーワードにいくつ当てはまるか数える（タイトル＋本文抜粋を対象・大小文字無視） */
 function matchScore(text: string, keywords: string[]): number {
@@ -141,6 +144,15 @@ export default async function NewsPage({
               <MarkAllReadButton articleIds={data.articles.filter((a) => !a.read).map((a) => a.id)} />
             )}
             <LearnPreferenceButton hasPreference={Boolean(data.preference)} />
+            {/* 受信箱ぜんぶをまとめて音声で聞く（通勤中向け） */}
+            {!filter && data.articles.length > 0 && (
+              <NewsAudioButton
+                scope={{ type: "inbox" }}
+                variant="button"
+                label="まとめて聞く"
+                mediaTitle="今日のニュース"
+              />
+            )}
           </div>
           {data.preference && (
             <p className="mt-1.5 text-xs leading-relaxed text-faint">

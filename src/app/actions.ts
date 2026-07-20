@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { prisma } from "@/lib/prisma";
+import { generateNewsAudio, type NewsAudioScope } from "@/lib/news-audio";
 import { learnNewsPreference } from "@/lib/news-preference";
 import { summarizeToJa } from "@/lib/summarize";
 import { translateOneToJa } from "@/lib/translate";
@@ -160,4 +161,21 @@ export async function summarizeArticle(
     return { ok: false, text: "記事が見つかりませんでした。" };
   }
   return summarizeToJa(article.titleJa ?? article.title, article.contentText ?? "");
+}
+
+/**
+ * ニュースを音声で聞く（通勤中向け）。
+ *
+ * 3つの単位に対応:
+ *   - article  … 記事1本を要約して読み上げ（一度作れば使い回す）
+ *   - category … そのジャンルの受信箱をダイジェストで読み上げ
+ *   - inbox    … 受信箱ぜんぶをダイジェストで読み上げ
+ *
+ * 生成には数秒〜十数秒かかるため、呼び出し側でローディング表示をすること。
+ */
+export async function speakNews(
+  scope: NewsAudioScope,
+): Promise<{ ok: boolean; url?: string; title?: string; error?: string }> {
+  await assertLoggedIn();
+  return generateNewsAudio(scope);
 }
