@@ -54,6 +54,19 @@ export function priorityStyle(value: number) {
   return TASK_PRIORITIES.find((p) => p.value === value) ?? TASK_PRIORITIES[1];
 }
 
+/**
+ * プロジェクトの色プリセット（タスクに付けるチップの色）
+ * 作成順にこの色が割り当てられる。使い切ったら先頭に戻る。
+ */
+export const PROJECT_COLORS = [
+  "#709BAD", // ブルーグレー
+  "#8DA377", // セージグリーン
+  "#DF923F", // オレンジ
+  "#9A7BA8", // パープル
+  "#C85E47", // レンガ赤
+  "#6E8B8B", // ティール
+];
+
 /** ダッシュボードの各カードに表示する件数 */
 export const DASHBOARD_TASK_COUNT = 5; // タスクカード
 export const DASHBOARD_NEWS_COUNT = 6; // ニュースダイジェスト

@@ -74,6 +74,20 @@ model GoogleAccount {
 }
 
 /// タスク（自前管理。Google Tasks等とは同期しない）
+/// プロジェクト（タスクの1つ上の分類）。クライアント案件や参加プロダクトを表す。
+model Project {
+  id        String   @id @default(cuid())
+  name      String // クライアント名／プロダクト名
+  color     String // チップの色。作成順に PROJECT_COLORS から自動割り当て
+  archived  Boolean  @default(false) // 終了案件は非表示にする（削除せず履歴を残す）
+  sortOrder Int      @default(0) // 表示順（小さいほど先）
+  createdAt DateTime @default(now())
+  tasks     Task[]
+
+  // 一覧は「進行中を表示順で取得」するため
+  @@index([archived, sortOrder])
+}
+
 model Task {
   id          String    @id @default(cuid())
   title       String
@@ -84,8 +98,14 @@ model Task {
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
+  // 所属プロジェクト（任意）。プロジェクトを消してもタスクは残す（SetNullで「未所属」になる）
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   // ダッシュボードは「未完了を優先度・期限順に取得」するため
   @@index([status, due])
+  // プロジェクトで絞り込むため
+  @@index([projectId, status])
 }
 
 /// メモ。kind で「突発メモ」と「よく使うメモ」を分ける。

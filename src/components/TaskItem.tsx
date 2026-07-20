@@ -6,9 +6,15 @@ import { deleteTask, toggleTask } from "@/app/(main)/tasks/actions";
 
 /**
  * タスク1行（ダッシュボードと /tasks で共用）
- * 丸ボタンで完了切替、×で削除。優先度と期限をチップで表示する。
+ * 丸ボタンで完了切替、×で削除。プロジェクト・優先度・期限をチップで表示する。
+ *
+ * project は任意（未所属のタスクもあるため）。呼び出し側が include して渡す。
  */
-export function TaskItem({ task }: { task: Task }) {
+export type TaskWithProject = Task & {
+  project?: { id: string; name: string; color: string } | null;
+};
+
+export function TaskItem({ task }: { task: TaskWithProject }) {
   const done = task.status === "done";
   const prio = priorityStyle(task.priority);
   const due = task.due ? formatDueLabel(task.due) : null;
@@ -36,6 +42,17 @@ export function TaskItem({ task }: { task: Task }) {
       >
         {task.title}
       </span>
+
+      {/* 所属プロジェクト（未所属なら出さない）。完了後も所属は残すので常に表示 */}
+      {task.project && (
+        <span
+          className="chip shrink-0 max-w-[8rem] truncate"
+          style={{ backgroundColor: `${task.project.color}33`, color: task.project.color }}
+          title={task.project.name}
+        >
+          {task.project.name}
+        </span>
+      )}
 
       {!done && (
         <span className="chip shrink-0" style={{ backgroundColor: prio.bg, color: prio.fg }}>

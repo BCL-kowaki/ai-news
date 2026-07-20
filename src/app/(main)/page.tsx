@@ -345,6 +345,8 @@ async function loadDashboard() {
             { createdAt: "desc" },
           ],
           take: DASHBOARD_TASK_COUNT,
+          // 所属プロジェクトのチップを出すため
+          include: { project: { select: { id: true, name: true, color: true } } },
         }),
         prisma.task.count({ where: { status: "open" } }),
         prisma.article.findMany({
