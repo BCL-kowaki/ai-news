@@ -202,7 +202,7 @@ async function loadNews(filter: string | undefined) {
             fg: c.fg,
             // ジャンル件数は受信箱ベース（片付けた分は減る）
             count: await prisma.article.count({
-              where: { source: { category: c.name }, ...INBOX_WHERE },
+              where: { category: c.name, ...INBOX_WHERE },
             }),
           })),
         ),
@@ -236,9 +236,9 @@ async function loadNews(filter: string | undefined) {
       title: a.titleJa ?? a.title, // 日本語訳があれば訳を、なければ原文
       url: a.url,
       sourceName: a.source.name,
-      category: a.source.category,
+      category: a.category,
       categoryStyle:
-        CATEGORIES.find((c) => c.name === a.source.category) ?? CATEGORY_STYLE_FALLBACK,
+        CATEGORIES.find((c) => c.name === a.category) ?? CATEGORY_STYLE_FALLBACK,
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),
       favorite: a.favoritedAt !== null,

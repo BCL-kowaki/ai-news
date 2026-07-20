@@ -20,8 +20,10 @@ import {
 } from "@/lib/config";
 import { formatJstDateTime, getJstDateKey } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
+import { getReadableAudioUrl } from "@/lib/blob";
 import { listTodayEvents, type TodayEvent } from "@/lib/google/calendar";
 import { listAllRecentMail, type MailItem } from "@/lib/google/gmail";
+import { BriefingAudio } from "@/components/BriefingAudio";
 import { EventRow } from "@/components/EventRow";
 import { MailLink } from "@/components/MailLink";
 import { TaskItem } from "@/components/TaskItem";
@@ -71,9 +73,15 @@ export default async function DashboardPage() {
             <GenerateBriefingButton hasBriefing={Boolean(data?.briefing)} />
           </div>
           {data?.briefing ? (
-            <div className="report mt-3 text-sm">
-              <Markdown remarkPlugins={[remarkGfm]}>{data.briefing.content}</Markdown>
-            </div>
+            <>
+              {/* 音声で聞く（通勤中向け。生成できていれば表示） */}
+              {data.briefingAudioUrl && (
+                <BriefingAudio src={data.briefingAudioUrl} dateLabel={formatJstFullDate(now)} />
+              )}
+              <div className="report mt-3 text-sm">
+                <Markdown remarkPlugins={[remarkGfm]}>{data.briefing.content}</Markdown>
+              </div>
+            </>
           ) : (
             <div className="mt-3 rounded-xl bg-accent-soft p-4">
               <p className="text-sm leading-relaxed text-muted">
@@ -371,6 +379,8 @@ async function loadDashboard() {
 
     return {
       briefing,
+      // 音声はPrivate Blobなので、再生用の署名付きURL（1時間有効）を発行して渡す
+      briefingAudioUrl: briefing?.audioUrl ? await getReadableAudioUrl(briefing.audioUrl) : null,
       tasks,
       openTaskCount,
       googleAccountCount: googleAccounts.length,
@@ -382,8 +392,8 @@ async function loadDashboard() {
         title: a.titleJa ?? a.title,
         url: a.url,
         sourceName: a.source.name,
-        category: a.source.category,
-        style: CATEGORIES.find((c) => c.name === a.source.category) ?? CATEGORY_STYLE_FALLBACK,
+        category: a.category,
+        style: CATEGORIES.find((c) => c.name === a.category) ?? CATEGORY_STYLE_FALLBACK,
         publishedLabel: formatJstDateTime(a.publishedAt),
       })),
     };

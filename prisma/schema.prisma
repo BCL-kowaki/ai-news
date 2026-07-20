@@ -36,6 +36,7 @@ model Article {
   title       String // 原文タイトル（そのまま保存）
   titleJa     String? // 日本語訳（DeepL）。日本語ソースや翻訳失敗時は null → 表示は原文にフォールバック
   contentText String? // RSSの本文抜粋（arXivは要旨）。オンデマンドの本文翻訳・要約の入力に使う
+  category    String? // 記事の内容カテゴリ（経済/研究/技術/エンタメ/動画）。収集時に判定（src/lib/classify.ts）
   url         String    @unique // 重複排除のキー
   publishedAt DateTime
   status      String    @default("pending") // pending（未送信） / sent（送信済み） / skipped（対象外）
@@ -195,5 +196,6 @@ model Briefing {
   id        String   @id @default(cuid())
   dateKey   String   @unique // "2026-07-17" 形式（JST基準の日付）
   content   String // 生成されたブリーフィング本文（Markdown）
+  audioUrl  String? // 読み上げ音声（WAV）のURL。通勤中に聞く用。生成前・失敗時は null
   createdAt DateTime @default(now())
 }

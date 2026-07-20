@@ -64,7 +64,7 @@ async function loadArticles(category: string): Promise<ArticleRow[] | null> {
   try {
     const articles = await prisma.article.findMany({
       // ジャンル一覧も受信箱ベース（★・🔖・✓で片付けた記事は各タブから見返す）
-      where: { source: { category }, favoritedAt: null, savedAt: null, readAt: null },
+      where: { category, favoritedAt: null, savedAt: null, readAt: null },
       orderBy: { publishedAt: "desc" },
       include: { source: { select: { name: true, category: true } } },
     });
@@ -74,7 +74,7 @@ async function loadArticles(category: string): Promise<ArticleRow[] | null> {
       title: a.titleJa ?? a.title, // 日本語訳があれば訳を、なければ原文
       url: a.url,
       sourceName: a.source.name,
-      category: a.source.category,
+      category: a.category,
       categoryStyle: style,
       publishedLabel: formatJstDateTime(a.publishedAt),
       hasContent: Boolean(a.contentText),

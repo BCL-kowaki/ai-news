@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { fetchFeed } from "@/lib/rss";
 import { syncSources } from "@/lib/source-sync";
+import { classifyArticles, fixedCategoryFromSource } from "@/lib/classify";
 import { needsTranslation, translateTitlesToJa } from "@/lib/translate";
 
 /**
@@ -45,12 +46,16 @@ export async function fetchAllSources(now: Date = new Date()): Promise<FetchNews
       const jaByUrl = new Map<string, string | null>();
       toTranslate.forEach((item, idx) => jaByUrl.set(item.url, translated[idx]));
 
+      // カテゴリ判定：動画（YouTube）・研究（arXiv）はソースで確定、それ以外は後でAIがまとめて判定する
+      const fixed = fixedCategoryFromSource(source.category);
+
       const created = await prisma.article.createMany({
         data: fresh.map((item) => ({
           sourceId: source.id,
           title: item.title,
           titleJa: jaByUrl.get(item.url) ?? null,
           contentText: item.contentText,
+          category: fixed, // null のものは下でAI判定して埋める
           url: item.url,
           publishedAt: item.publishedAt,
         })),
@@ -61,5 +66,42 @@ export async function fetchAllSources(now: Date = new Date()): Promise<FetchNews
     }),
   );
 
+  // カテゴリ未設定の記事をまとめてAI判定する（1回の収集につき数回のAI呼び出しで済む）
+  await classifyPendingArticles();
+
   return { inserted: details.reduce((sum, d) => sum + d.inserted, 0), details };
+}
+
+/**
+ * カテゴリ未設定の記事をまとめて判定して保存する。
+ * 収集直後に呼ぶほか、過去記事の埋め直しにも使える（AI失敗時も既定カテゴリで必ず埋まる）。
+ */
+export async function classifyPendingArticles(limit = 200): Promise<number> {
+  const targets = await prisma.article.findMany({
+    where: { category: null },
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+    select: { id: true, title: true, titleJa: true, contentText: true },
+  });
+  if (targets.length === 0) return 0;
+
+  // 判定は日本語訳があればそれを使う（日本語の方が精度が出やすい）
+  const decided = await classifyArticles(
+    targets.map((t) => ({ id: t.id, title: t.titleJa ?? t.title, contentText: t.contentText })),
+  );
+
+  // カテゴリごとにまとめて更新（1件ずつUPDATEしない）
+  const byCategory = new Map<string, string[]>();
+  Array.from(decided).forEach(([id, category]) => {
+    const list = byCategory.get(category) ?? [];
+    list.push(id);
+    byCategory.set(category, list);
+  });
+  await Promise.all(
+    Array.from(byCategory.entries()).map(([category, ids]) =>
+      prisma.article.updateMany({ where: { id: { in: ids } }, data: { category } }),
+    ),
+  );
+
+  return targets.length;
 }
