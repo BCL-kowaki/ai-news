@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
@@ -190,4 +191,59 @@ export async function deleteMeeting(formData: FormData): Promise<void> {
   await prisma.meeting.delete({ where: { id } }).catch(() => {});
   revalidateMeetingViews();
   redirect("/meetings"); // 詳細ページから消した後に404にならないよう一覧へ戻す
+}
+
+/**
+ * レポートの共有リンクを発行する（ログインしていない相手にも見せる）。
+ *
+ * 公開されるのは `summaryMd`（レポート本文）だけ。音声・文字起こしは共有されない。
+ * すでに発行済みなら作り直さず、同じリンクを使い続ける（相手のブックマークを壊さないため）。
+ */
+export async function enableMeetingShare(formData: FormData): Promise<void> {
+  await assertLoggedIn();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const meeting = await prisma.meeting.findUnique({
+    where: { id },
+    select: { shareToken: true, summaryMd: true },
+  });
+  // レポートが無い会議は共有しても中身が空なので発行しない
+  if (!meeting || !meeting.summaryMd || meeting.shareToken) {
+    revalidatePath(`/meetings/${id}`);
+    return;
+  }
+
+  await prisma.meeting.update({
+    where: { id },
+    data: { shareToken: createShareToken() },
+  });
+  revalidatePath(`/meetings/${id}`);
+}
+
+/**
+ * 共有を停止する（リンクを無効化）。
+ * トークンを消すので、配ったリンクはその場で開けなくなる。
+ */
+export async function disableMeetingShare(formData: FormData): Promise<void> {
+  await assertLoggedIn();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.meeting
+    .update({ where: { id }, data: { shareToken: null } })
+    .catch(() => {
+      // 会議が消えている場合は何もしない
+    });
+  revalidatePath(`/meetings/${id}`);
+}
+
+/**
+ * 共有リンクのトークン。
+ * 推測されないよう暗号論的乱数から32文字のURL安全な文字列を作る。
+ */
+function createShareToken(): string {
+  return randomBytes(24).toString("base64url"); // 32文字
 }

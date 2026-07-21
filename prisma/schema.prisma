@@ -167,6 +167,10 @@ model Meeting {
   errorMsg             String? // 直近の処理エラー（画面表示用）
   calendarEventId      String? // Googleカレンダーに登録した予定のID（登録済みの印）
   calendarAccountEmail String? // どのアカウントのカレンダーに登録したか
+  // レポートの共有リンク用トークン（推測不能なランダム文字列）。
+  // null = 非公開。値が入っているときだけ /share/<token> で「レポートのみ」を閲覧できる。
+  // 共有OFFでnullに戻すとリンクは即座に無効になる（音声・文字起こしは共有対象外）。
+  shareToken           String?  @unique
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

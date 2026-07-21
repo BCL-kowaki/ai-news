@@ -2,13 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, CalendarCheck2, CalendarPlus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CalendarPlus, Link2, Link2Off, Trash2 } from "lucide-react";
 import { meetingStatusStyle } from "@/lib/config";
 import { formatJstDateTime } from "@/lib/datetime";
 import { getReadableAudioUrl } from "@/lib/blob";
 import { prisma } from "@/lib/prisma";
+import { ShareReportBox } from "@/components/ShareReportBox";
 import { SubmitButton } from "@/components/SubmitButton";
-import { deleteMeeting, registerMeetingCalendar } from "../actions";
+import {
+  deleteMeeting,
+  disableMeetingShare,
+  enableMeetingShare,
+  registerMeetingCalendar,
+} from "../actions";
 import { MeetingProcessButtons } from "./MeetingProcessButtons";
 
 /**
@@ -97,7 +103,29 @@ export default async function MeetingDetailPage({ params }: { params: { id: stri
       {/* レポート要約（Markdown → 整形表示） */}
       {meeting.summaryMd && (
         <section className="card mt-4 p-5 sm:p-6">
-          <h2 className="card-title">レポート</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="card-title">レポート</h2>
+            {/* 共有リンクの発行・停止（レポートのみが対象。音声・文字起こしは共有されない） */}
+            <form action={meeting.shareToken ? disableMeetingShare : enableMeetingShare}>
+              <input type="hidden" name="id" value={meeting.id} />
+              <button type="submit" className="btn-ghost">
+                {meeting.shareToken ? (
+                  <>
+                    <Link2Off className="h-3.5 w-3.5" aria-hidden="true" />
+                    共有を停止
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    共有リンクを作る
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+
+          {meeting.shareToken && <ShareReportBox token={meeting.shareToken} />}
+
           <div className="report mt-3">
             <Markdown remarkPlugins={[remarkGfm]}>{meeting.summaryMd}</Markdown>
           </div>
