@@ -69,7 +69,58 @@
   }
 }
 
+/*
+ * メモ画面だけの装い（Macのメモ帳に合わせる）
+ *
+ * アプリ全体はエディトリアル調（紙色・茶の太枠・ずらし影）だが、
+ * メモは「Macのメモ帳そのままにしたい」という要望のため、この範囲だけ白基調にする。
+ * やり方は**トークンの上書き**。色の定義元はここ1か所のままなので、
+ * .card / .chip / .input などの共通パーツはそのままで見た目だけ切り替わる。
+ */
+.notes-ui {
+  --bg: #ffffff;
+  --bg-deep: #f5f5f7;
+  --card: #ffffff;
+  --ink: #1d1d1f;
+  --muted: #6e6e73;
+  --faint: #8e8e93;
+  --line: #e3e3e3; /* 髪の毛のような細い区切り線 */
+  --accent: #c8912a; /* リンク・ピンの金色 */
+  --accent-strong: #a87717;
+  --accent-soft: #ffe79a; /* 選択中の行の黄色 */
+  --fill: rgba(0, 0, 0, 0.05);
+  --hard-shadow: transparent; /* ずらし影は使わない */
+}
+
 @layer components {
+  /* --- メモ画面用に共通パーツを平らにする（枠線を細く・影と角丸を無くす） --- */
+  .notes-ui .card {
+    @apply rounded-none border-0 shadow-none;
+  }
+  .notes-ui .chip {
+    @apply border border-line px-2 py-0 text-[11px] font-semibold;
+  }
+  .notes-ui .btn-ghost {
+    @apply min-h-8 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold;
+  }
+  .notes-ui .btn-primary {
+    @apply min-h-8 rounded-md border-0 bg-[#f0b429] px-3 py-1 text-[12px] font-bold text-[#1d1d1f] shadow-none hover:bg-[#e0a41f];
+  }
+  .notes-ui .input {
+    @apply rounded-lg border border-line bg-[var(--fill)] px-3 py-1.5 text-[13px];
+  }
+  .notes-ui .report {
+    @apply text-[14px] leading-[1.6];
+  }
+  /* 罫線は行の内側から引く（Macのメモ帳の一覧と同じ見え方） */
+  .notes-list > * + * {
+    border-top: 1px solid var(--line);
+  }
+  /* 選択中のメモ（Macは黄色で示す） */
+  .notes-selected {
+    background: var(--accent-soft);
+  }
+
   /* カード：クリーム地＋太めの茶枠＋ずらした硬い影（エディトリアル調の基本パーツ） */
   .card {
     @apply rounded-card border-2 border-line bg-card shadow-card;

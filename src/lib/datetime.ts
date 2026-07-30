@@ -102,6 +102,29 @@ export function formatMemoTimestamp(date: Date, now: Date = new Date()): string 
   }).format(date);
 }
 
+/**
+ * メモ一覧の見出し（Macのメモ帳と同じ区切り方・JST基準）。
+ *
+ * 「今日 / 昨日 / 過去7日間 / 過去30日間 / ◯月 / ◯年」の順に粗くなる。
+ * 同じ文字列を返すメモが1つのかたまりになるので、並び順（新しい順）のまま上から詰めればよい。
+ */
+export function memoGroupLabel(date: Date, now: Date = new Date()): string {
+  // JSTの日付境界どうしで引き算し、「何日前か」で判定する
+  const daysAgo = Math.round(
+    (getJstStartOfToday(now).getTime() - getJstStartOfToday(date).getTime()) /
+      (24 * 60 * 60 * 1000),
+  );
+
+  if (daysAgo <= 0) return "今日";
+  if (daysAgo === 1) return "昨日";
+  if (daysAgo <= 6) return "過去7日間";
+  if (daysAgo <= 29) return "過去30日間";
+
+  const { year, month } = getJstParts(date);
+  const thisYear = getJstParts(now).year;
+  return year === thisYear ? `${Number(month)}月` : `${year}年`;
+}
+
 /** Dateを日本時間の年月日時分に分解する。 */
 function getJstParts(date: Date) {
   const formatter = new Intl.DateTimeFormat("en-CA", {

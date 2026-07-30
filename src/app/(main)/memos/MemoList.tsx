@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Paperclip,
   Pencil,
+  SquarePen,
   Pin,
   PinOff,
   Search,
@@ -17,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { FOLDER_ALL, FOLDER_NONE, MEMO_SORTS, type MemoSort } from "@/lib/config";
-import { formatMemoTimestamp } from "@/lib/datetime";
+import { formatMemoTimestamp, memoGroupLabel } from "@/lib/datetime";
 import { memoPreview, memoTitle } from "@/lib/memo";
 import { SwipeRow, type SwipeAction } from "@/components/SwipeRow";
 import { ContextMenu, type MenuItem } from "@/components/ContextMenu";
@@ -125,7 +126,7 @@ export function MemoList({
   }
 
   // 絞り込み → 検索 → 並び替え。ピン留めは常に先頭へ寄せる
-  const { pinned, others, total } = useMemo(() => {
+  const { pinned, groups, total } = useMemo(() => {
     const needle = query.trim().toLowerCase();
 
     const filtered = items.filter((m) => {
@@ -141,11 +142,24 @@ export function MemoList({
       return b.updatedAt.getTime() - a.updatedAt.getTime();
     });
 
-    return {
-      pinned: sorted.filter((m) => m.pinned),
-      others: sorted.filter((m) => !m.pinned),
-      total: sorted.length,
-    };
+    const pinnedItems = sorted.filter((m) => m.pinned);
+    const rest = sorted.filter((m) => !m.pinned);
+
+    /*
+     * Macのメモ帳と同じく「今日 / 昨日 / 過去7日間 / 過去30日間 / ◯月」で区切る。
+     * 並びは新しい順なので、上から見て見出しが変わったところで新しいかたまりを作ればよい。
+     * タイトル順のときは日付の並びではないので区切らない。
+     */
+    const groups: { label: string | null; items: MemoListItem[] }[] = [];
+    for (const memo of rest) {
+      const label =
+        sort === "title" ? null : memoGroupLabel(sort === "created" ? memo.createdAt : memo.updatedAt);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.items.push(memo);
+      else groups.push({ label, items: [memo] });
+    }
+
+    return { pinned: pinnedItems, groups, total: sorted.length };
   }, [items, query, folder, sort]);
 
   /** 長押しメニューの中身（フォルダ移動は候補が多くなりすぎないよう先頭6件まで） */
@@ -222,20 +236,20 @@ export function MemoList({
 
   return (
     <div className="pb-4">
-      {/* 見出し（スマホはフォルダ一覧へ戻れるようにする） */}
-      <div className="flex items-center justify-between gap-2">
+      {/* 見出し（Macは「フォルダ名 / N件のメモ」。スマホはフォルダ一覧へ戻れるようにする） */}
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link
             href="/memos"
-            className="inline-flex items-center gap-1 text-sm font-bold text-muted hover:text-ink lg:hidden"
+            className="inline-flex items-center gap-1 text-[13px] font-semibold text-accent hover:opacity-70 lg:hidden"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             フォルダ
           </Link>
-          <h2 className="truncate text-[19px] tracking-tight lg:text-[17px]" style={{ fontWeight: 950 }}>
+          <h2 className="truncate text-[19px] font-bold tracking-tight lg:text-[15px]">
             {folderName}
           </h2>
-          <p className="text-xs text-faint">{total}件のメモ</p>
+          <p className="text-[11px] text-faint">{total}件のメモ</p>
         </div>
 
         {/* PCは見出しの隣に作成ボタン（スマホは右下の丸ボタン） */}
@@ -244,10 +258,10 @@ export function MemoList({
           onClick={() => void createMemo()}
           disabled={creating}
           aria-label="新規メモ"
-          className="btn-ghost hidden lg:inline-flex"
+          title="新規メモ"
+          className="btn-ghost hidden !h-8 !w-8 !justify-center !px-0 lg:inline-flex"
         >
-          <Pencil className="h-4 w-4" aria-hidden="true" />
-          新規
+          <SquarePen className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -312,6 +326,7 @@ export function MemoList({
                   key={memo.id}
                   memo={memo}
                   folder={folder}
+                  sort={sort}
                   selected={selectedId === memo.id}
                   open={openId === memo.id}
                   onOpenChange={(o) => setOpenId(o ? memo.id : null)}
@@ -321,13 +336,14 @@ export function MemoList({
               ))}
             </Section>
           )}
-          {others.length > 0 && (
-            <Section title={pinned.length > 0 ? "メモ" : undefined}>
-              {others.map((memo) => (
+          {groups.map((group, i) => (
+            <Section key={group.label ?? `g${i}`} title={group.label ?? undefined}>
+              {group.items.map((memo) => (
                 <Row
                   key={memo.id}
                   memo={memo}
                   folder={folder}
+                  sort={sort}
                   selected={selectedId === memo.id}
                   open={openId === memo.id}
                   onOpenChange={(o) => setOpenId(o ? memo.id : null)}
@@ -336,7 +352,7 @@ export function MemoList({
                 />
               ))}
             </Section>
-          )}
+          ))}
         </>
       )}
 
@@ -370,8 +386,8 @@ export function MemoList({
 function Section({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <section className="mt-3">
-      {title && <h3 className="text-xs font-bold text-muted">{title}</h3>}
-      <div className="card mt-1.5 divide-y divide-line">{children}</div>
+      {title && <h3 className="px-1 pb-1 text-[12px] font-bold text-ink">{title}</h3>}
+      <div className="notes-list">{children}</div>
     </section>
   );
 }
@@ -380,6 +396,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
 function Row({
   memo,
   folder,
+  sort,
   selected,
   open,
   onOpenChange,
@@ -388,6 +405,7 @@ function Row({
 }: {
   memo: MemoListItem;
   folder: string;
+  sort: MemoSort;
   selected: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -410,29 +428,35 @@ function Row({
         <Link
           href={`/memos/${memo.id}?folder=${folder}`}
           // 長押し中にiOSがテキスト選択・リンクメニューを出すのを抑える
-          className={`block select-none px-4 py-3 transition-colors duration-150 active:opacity-60 ${
-            selected ? "bg-accent-soft" : "hover:bg-bg"
+          className={`block select-none px-3 py-2.5 transition-colors duration-100 active:opacity-60 ${
+            selected ? "notes-selected" : "hover:bg-[var(--fill)]"
           }`}
           draggable={false}
         >
           <div className="flex items-start gap-2">
-            <span className="flex-1 truncate text-[15px] font-bold">{memoTitle(memo.body)}</span>
+            <span className="flex-1 truncate text-[14px] font-bold">{memoTitle(memo.body)}</span>
             {memo.pinned && (
-              <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-label="ピン留め" />
+              <Pin className="mt-0.5 h-3 w-3 shrink-0 text-accent" aria-label="ピン留め" />
             )}
           </div>
-          <p className="mt-0.5 truncate text-[13px] text-muted">
-            {memoPreview(memo.body) || "追加のテキストなし"}
+          {/* Macは「日付 + 本文の続き」を1行にまとめて出す */}
+          <p className="mt-0.5 truncate text-[12px] text-muted">
+            <span className="text-faint">
+              {formatMemoTimestamp(sort === "created" ? memo.createdAt : memo.updatedAt)}
+            </span>
+            <span className="ml-2">{memoPreview(memo.body) || "追加のテキストなし"}</span>
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-faint">
-            <span>{formatMemoTimestamp(memo.updatedAt)}</span>
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-faint">
+            <span className="inline-flex items-center gap-1">
+              <Folder className="h-3 w-3" aria-hidden="true" />
+              {memo.folderName ?? "未分類"}
+            </span>
             {memo.attachmentCount > 0 && (
               <span className="inline-flex items-center gap-0.5">
                 <Paperclip className="h-3 w-3" aria-hidden="true" />
                 {memo.attachmentCount}
               </span>
             )}
-            {memo.folderName && <span className="chip bg-fill text-muted">{memo.folderName}</span>}
           </div>
         </Link>
       </SwipeRow>

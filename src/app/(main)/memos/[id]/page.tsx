@@ -113,7 +113,8 @@ export default async function MemoDetailPage({
       </div>
 
       {/* 日時は本文の上に小さく（iPhoneメモ帳と同じ位置） */}
-      <p className="mt-3 text-center text-xs text-faint">
+      {/* Macは本文の上に日時を中央寄せで置く */}
+      <p className="mt-3 text-center text-[11px] text-faint">
         {formatJstDateTime(memo.updatedAt)}
         {memo.folder?.name && ` ・ ${memo.folder.name}`}
       </p>
@@ -122,8 +123,8 @@ export default async function MemoDetailPage({
       <MemoEditor memoId={memo.id} initialBody={memo.body} />
 
       {/* フォルダ */}
-      <section className="card mt-4 p-4">
-        <h2 className="card-title">フォルダ</h2>
+      <section className="mt-5 rounded-lg border border-line p-3">
+        <h2 className="text-[12px] font-bold text-muted">フォルダ</h2>
         {folders.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
             フォルダはまだありません。
@@ -162,8 +163,8 @@ export default async function MemoDetailPage({
       </section>
 
       {/* 添付ファイル */}
-      <section className="card mt-4 p-4">
-        <h2 className="card-title">
+      <section className="mt-5 rounded-lg border border-line p-3">
+        <h2 className="text-[12px] font-bold text-muted">
           添付ファイル（{attachments.length}/{MEMO_ATTACHMENT_MAX}）
         </h2>
         {attachments.length === 0 ? (

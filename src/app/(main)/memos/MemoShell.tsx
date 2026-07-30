@@ -79,17 +79,18 @@ export function MemoShell({
   const paneScroll = "lg:h-[calc(100dvh-7.5rem)] lg:overflow-y-auto";
 
   return (
-    <div className="lg:grid lg:grid-cols-[196px_minmax(272px,320px)_1fr]">
+    // notes-ui: この中だけ色トークンを白基調（Macのメモ帳）に差し替える
+    <div className="notes-ui -mx-4 -mt-5 bg-card sm:-mx-5 lg:grid lg:grid-cols-[196px_minmax(272px,340px)_1fr]">
       {/* 左：フォルダ */}
       <aside
-        className={`${showingFolders ? "block" : "hidden"} lg:block ${paneScroll} lg:pr-4`}
+        className={`${showingFolders ? "block" : "hidden"} bg-[#f7f7f7] px-4 pt-4 lg:block lg:px-2.5 ${paneScroll}`}
       >
         <FolderPane folders={folders} counts={counts} selected={folder} />
       </aside>
 
       {/* 中央：一覧 */}
       <div
-        className={`${!showingFolders && !showingMemo ? "block" : "hidden"} lg:block ${paneScroll} lg:border-l-2 lg:border-line lg:px-4`}
+        className={`${!showingFolders && !showingMemo ? "block" : "hidden"} px-4 pt-4 lg:block lg:border-l lg:border-line lg:px-2.5 ${paneScroll}`}
       >
         {folder === FOLDER_TRASH ? (
           <TrashList memos={trash} />
@@ -106,7 +107,7 @@ export function MemoShell({
 
       {/* 右：本文 */}
       <div
-        className={`${showingMemo ? "block" : "hidden"} lg:block ${paneScroll} lg:border-l-2 lg:border-line lg:pl-4`}
+        className={`${showingMemo ? "block" : "hidden"} px-4 pt-4 lg:block lg:border-l lg:border-line lg:px-6 ${paneScroll}`}
       >
         {children}
       </div>

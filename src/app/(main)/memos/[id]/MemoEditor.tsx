@@ -531,8 +531,10 @@ export function MemoEditor({ memoId, initialBody }: { memoId: string; initialBod
   const toolbarDisabled = busy !== "idle";
 
   return (
-    <div className="card mt-3 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    // Macのメモ帳は本文に枠が無いので、囲みを持たせず紙のように見せる
+    <div className="mt-1">
+      {/* Macのメモ帳は本文の上に何も置かないので、保存状態は控えめに右端へ */}
+      <div className="flex min-h-6 flex-wrap items-center justify-end gap-2">
         <SaveIndicator state={saveState} />
         {editing && (
           <button
@@ -618,7 +620,7 @@ export function MemoEditor({ memoId, initialBody }: { memoId: string; initialBod
       )}
 
       {/* 録音・添付 */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t-2 border-line pt-3">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
         <button
           type="button"
           onClick={toggleRecording}
@@ -710,19 +712,22 @@ function ToolButton({
   );
 }
 
-/** 保存状態の表示（保存ボタンが無いので、ここが唯一の手がかりになる） */
+/**
+ * 保存状態の表示（保存ボタンが無いので、ここが唯一の手がかりになる）
+ * 何も起きていないときは出さない。常に文字があるとMacのメモ帳の静けさが崩れるため。
+ */
 function SaveIndicator({ state }: { state: SaveState }) {
-  if (state === "saving") return <span className="text-xs font-bold text-muted">保存中…</span>;
+  if (state === "saving") return <span className="text-[11px] text-faint">保存中…</span>;
   if (state === "saved") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-bold text-muted">
-        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1 text-[11px] text-faint">
+        <Check className="h-3 w-3" aria-hidden="true" />
         保存しました
       </span>
     );
   }
   if (state === "error") {
-    return <span className="text-xs font-bold text-red-600">保存できませんでした</span>;
+    return <span className="text-[11px] font-bold text-red-600">保存できませんでした</span>;
   }
-  return <span className="text-xs text-faint">自動保存</span>;
+  return null;
 }
