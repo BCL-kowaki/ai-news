@@ -156,6 +156,11 @@
   /* 会議レポートなどのMarkdown整形表示（見出し・表・箇条書き） */
   .report {
     @apply text-sm leading-relaxed text-ink;
+    /*
+     * 長いURLのように切れ目のない文字列は、そのままだと枠を突き抜けて横スクロールを生む。
+     * メモにURLを貼るのはよくある使い方なので、どこでも折り返せるようにしておく。
+     */
+    overflow-wrap: anywhere;
   }
   .report h1 {
     @apply mb-3 mt-1 text-xl tracking-tight;

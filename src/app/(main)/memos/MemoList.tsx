@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ChevronLeft,
   Copy,
   Folder,
   FolderOpen,
@@ -15,7 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { MEMO_SORTS, toMemoSort, type MemoSort } from "@/lib/config";
+import { FOLDER_ALL, FOLDER_NONE, MEMO_SORTS, type MemoSort } from "@/lib/config";
 import { formatMemoTimestamp } from "@/lib/datetime";
 import { memoPreview, memoTitle } from "@/lib/memo";
 import { SwipeRow, type SwipeAction } from "@/components/SwipeRow";
@@ -29,16 +30,15 @@ import {
 } from "./actions";
 
 /**
- * メモ一覧の本体（iPhoneメモ帳の操作感を再現するクライアント側）
+ * 中央ペイン：メモ一覧（Macのメモ帳の真ん中の列）
  *
- * 検索・フォルダ絞り込み・並び替えは**その場で即反映**させたいので、
- * サーバーへ行き直さずここで持つ（ネイティブアプリと同じ感触にするため）。
- * 一覧に出す全メモは最初にサーバーから受け取っている。
+ * 検索・並び替えは**その場で即反映**させたいのでここで持つ（サーバーへ行き直さない）。
+ * フォルダの選択は左ペイン（URLの ?folder=）が持つので、ここには置かない。
  *
  * 操作は3経路。指でも指以外でも同じことができるようにしてある。
  * - 左スワイプ … 複製・削除 / 右スワイプ … ピン留め
  * - 長押し・右クリック … メニュー（ピン留め・複製・フォルダ移動・削除）
- * - 行を開いた先の詳細画面 … 同じ操作をボタンで
+ * - 開いた先の本文ペイン … 同じ操作をボタンで
  */
 
 export type MemoListItem = {
@@ -59,14 +59,17 @@ type MenuTarget = { memo: MemoListItem; x: number; y: number };
 export function MemoList({
   memos,
   folders,
-  initialFolderId,
-  initialSort,
+  folder,
+  folderName,
+  selectedId,
 }: {
   memos: MemoListItem[];
   folders: FolderOption[];
-  /** URLから引き継いだ初期の絞り込み（undefined=すべて / "none"=未分類） */
-  initialFolderId?: string;
-  initialSort?: string;
+  /** 選択中のフォルダ（"all" / "none" / フォルダID） */
+  folder: string;
+  folderName: string;
+  /** 右ペインで開いているメモのID（3ペインのとき、どれを見ているか分かるように光らせる） */
+  selectedId: string | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -76,8 +79,7 @@ export function MemoList({
   useEffect(() => setItems(memos), [memos]);
 
   const [query, setQuery] = useState("");
-  const [folderId, setFolderId] = useState<string | undefined>(initialFolderId);
-  const [sort, setSort] = useState<MemoSort>(toMemoSort(initialSort));
+  const [sort, setSort] = useState<MemoSort>("updated");
   /** 右側の操作ボタンを開いている行（1行だけ開く） */
   const [openId, setOpenId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
@@ -98,9 +100,7 @@ export function MemoList({
   }
 
   function togglePin(memo: MemoListItem) {
-    setItems((prev) =>
-      prev.map((m) => (m.id === memo.id ? { ...m, pinned: !m.pinned } : m)),
-    );
+    setItems((prev) => prev.map((m) => (m.id === memo.id ? { ...m, pinned: !m.pinned } : m)));
     run(() => toggleMemoPinById(memo.id));
   }
 
@@ -112,12 +112,13 @@ export function MemoList({
     run(() => moveMemoToFolderById(memo.id, targetFolderId));
   }
 
-  /** 新規メモ（作ってすぐ編集画面へ） */
+  /** 新規メモ（作ってすぐ本文へ。今のフォルダの中に作る） */
   async function createMemo() {
     setCreating(true);
     try {
-      const { id } = await createBlankMemoIn(folderId ?? "");
-      router.push(`/memos/${id}`);
+      // "all" / "none" は実フォルダではないのでサーバー側で未分類に落ちる
+      const { id } = await createBlankMemoIn(folder);
+      router.push(`/memos/${id}?folder=${folder}`);
     } catch {
       setCreating(false);
     }
@@ -128,8 +129,8 @@ export function MemoList({
     const needle = query.trim().toLowerCase();
 
     const filtered = items.filter((m) => {
-      if (folderId === "none" && m.folderId !== null) return false;
-      if (folderId && folderId !== "none" && m.folderId !== folderId) return false;
+      if (folder === FOLDER_NONE && m.folderId !== null) return false;
+      if (folder !== FOLDER_ALL && folder !== FOLDER_NONE && m.folderId !== folder) return false;
       if (needle && !m.body.toLowerCase().includes(needle)) return false;
       return true;
     });
@@ -145,7 +146,7 @@ export function MemoList({
       others: sorted.filter((m) => !m.pinned),
       total: sorted.length,
     };
-  }, [items, query, folderId, sort]);
+  }, [items, query, folder, sort]);
 
   /** 長押しメニューの中身（フォルダ移動は候補が多くなりすぎないよう先頭6件まで） */
   function menuItems(memo: MemoListItem): MenuItem[] {
@@ -220,9 +221,38 @@ export function MemoList({
   }
 
   return (
-    <>
-      {/* 検索（打つだけで絞り込む。検索ボタンは要らない） */}
-      <div className="relative mt-4">
+    <div className="pb-4">
+      {/* 見出し（スマホはフォルダ一覧へ戻れるようにする） */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <Link
+            href="/memos"
+            className="inline-flex items-center gap-1 text-sm font-bold text-muted hover:text-ink lg:hidden"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            フォルダ
+          </Link>
+          <h2 className="truncate text-[19px] tracking-tight lg:text-[17px]" style={{ fontWeight: 950 }}>
+            {folderName}
+          </h2>
+          <p className="text-xs text-faint">{total}件のメモ</p>
+        </div>
+
+        {/* PCは見出しの隣に作成ボタン（スマホは右下の丸ボタン） */}
+        <button
+          type="button"
+          onClick={() => void createMemo()}
+          disabled={creating}
+          aria-label="新規メモ"
+          className="btn-ghost hidden lg:inline-flex"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+          新規
+        </button>
+      </div>
+
+      {/* 検索（打つだけで絞り込む） */}
+      <div className="relative mt-3">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
           aria-hidden="true"
@@ -250,38 +280,28 @@ export function MemoList({
         )}
       </div>
 
-      {/* フォルダ */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Chip label="すべて" active={!folderId} onClick={() => setFolderId(undefined)} />
-        <Chip label="未分類" active={folderId === "none"} onClick={() => setFolderId("none")} />
-        {folders.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.name}
-            active={folderId === f.id}
-            onClick={() => setFolderId(f.id)}
-          />
-        ))}
-      </div>
-
       {/* 並び替え */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-faint">並び替え</span>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {MEMO_SORTS.map((s) => (
-          <Chip
+          <button
             key={s.value}
-            label={s.label}
-            active={sort === s.value}
+            type="button"
             onClick={() => setSort(s.value)}
-          />
+            aria-pressed={sort === s.value}
+            className={`chip cursor-pointer transition-opacity duration-150 hover:opacity-80 ${
+              sort === s.value ? "bg-accent-soft text-accent" : "bg-card text-muted"
+            }`}
+          >
+            {s.label}
+          </button>
         ))}
       </div>
 
       {total === 0 ? (
-        <p className="card mt-4 p-4 text-sm text-muted">
+        <p className="card mt-3 p-4 text-sm text-muted">
           {query
             ? `「${query}」に一致するメモはありません。`
-            : "メモはまだありません。右下のボタンから書き始められます。"}
+            : "このフォルダにメモはありません。"}
         </p>
       ) : (
         <>
@@ -291,6 +311,8 @@ export function MemoList({
                 <Row
                   key={memo.id}
                   memo={memo}
+                  folder={folder}
+                  selected={selectedId === memo.id}
                   open={openId === memo.id}
                   onOpenChange={(o) => setOpenId(o ? memo.id : null)}
                   onLongPress={(x, y) => setMenu({ memo, x, y })}
@@ -305,6 +327,8 @@ export function MemoList({
                 <Row
                   key={memo.id}
                   memo={memo}
+                  folder={folder}
+                  selected={selectedId === memo.id}
                   open={openId === memo.id}
                   onOpenChange={(o) => setOpenId(o ? memo.id : null)}
                   onLongPress={(x, y) => setMenu({ memo, x, y })}
@@ -316,18 +340,17 @@ export function MemoList({
         </>
       )}
 
-      <p className="mt-3 text-center text-xs text-faint">{total}件のメモ</p>
-      <p className="mt-1 text-center text-[11px] text-faint">
+      <p className="mt-3 text-center text-[11px] text-faint">
         左へスワイプで複製・削除／右へスワイプでピン留め／長押しでメニュー
       </p>
 
-      {/* 新規メモ（右下に固定。スマホはタブバーの上に浮かせる） */}
+      {/* スマホ用の作成ボタン（タブバーの上に浮かせる） */}
       <button
         type="button"
         onClick={() => void createMemo()}
         disabled={creating}
         aria-label="新規メモ"
-        className="btn-primary fixed right-4 z-30 !h-14 !w-14 !rounded-full !px-0 bottom-[calc(env(safe-area-inset-bottom)+68px)] md:bottom-6 md:right-6"
+        className="btn-primary fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+68px)] z-30 !h-14 !w-14 !rounded-full !px-0 lg:hidden"
       >
         <Pencil className="h-6 w-6" aria-hidden="true" />
       </button>
@@ -340,39 +363,15 @@ export function MemoList({
           onClose={() => setMenu(null)}
         />
       )}
-    </>
-  );
-}
-
-/** 絞り込み・並び替えのチップ */
-function Chip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`chip cursor-pointer transition-opacity duration-150 hover:opacity-80 ${
-        active ? "bg-accent-soft text-accent" : "bg-card text-muted"
-      }`}
-    >
-      {label}
-    </button>
+    </div>
   );
 }
 
 function Section({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <section className="mt-4">
-      {title && <h2 className="text-sm font-bold text-muted">{title}</h2>}
-      <div className="card mt-2 divide-y divide-line">{children}</div>
+    <section className="mt-3">
+      {title && <h3 className="text-xs font-bold text-muted">{title}</h3>}
+      <div className="card mt-1.5 divide-y divide-line">{children}</div>
     </section>
   );
 }
@@ -380,12 +379,16 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
 /** メモ1行（スワイプ・長押し対応） */
 function Row({
   memo,
+  folder,
+  selected,
   open,
   onOpenChange,
   onLongPress,
   actions,
 }: {
   memo: MemoListItem;
+  folder: string;
+  selected: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLongPress: (x: number, y: number) => void;
@@ -403,10 +406,13 @@ function Row({
         trailing={actions.trailing}
         onLongPress={() => onLongPress(point.x, point.y)}
       >
+        {/* 本文ペインから一覧へ戻れるよう、見ていたフォルダをURLに持たせる */}
         <Link
-          href={`/memos/${memo.id}`}
+          href={`/memos/${memo.id}?folder=${folder}`}
           // 長押し中にiOSがテキスト選択・リンクメニューを出すのを抑える
-          className="block select-none px-4 py-3 transition-colors duration-150 hover:bg-bg active:opacity-60"
+          className={`block select-none px-4 py-3 transition-colors duration-150 active:opacity-60 ${
+            selected ? "bg-accent-soft" : "hover:bg-bg"
+          }`}
           draggable={false}
         >
           <div className="flex items-start gap-2">

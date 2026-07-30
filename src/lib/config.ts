@@ -189,6 +189,14 @@ export const MEMO_SWIPE_COMMIT_EXTRA_PX = 66;
 /** 長押しでメニューを出すまでの時間(ミリ秒) */
 export const MEMO_LONG_PRESS_MS = 500;
 
+/**
+ * メモの左ペインで選べる「特別なフォルダ」の指定値（URLの ?folder= に入る）
+ * 実フォルダのID（cuid）と混ざらない固定の文字列にしてある。
+ */
+export const FOLDER_ALL = "all";
+export const FOLDER_NONE = "none";
+export const FOLDER_TRASH = "trash";
+
 /** メモ一覧の並び替え（単一定義元。URLの ?sort= の値になる） */
 export const MEMO_SORTS = [
   { value: "updated", label: "編集日順" },

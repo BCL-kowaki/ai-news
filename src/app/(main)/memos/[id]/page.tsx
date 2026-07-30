@@ -21,7 +21,16 @@ import { moveMemoToFolder, removeMemoAttachment, toggleMemoPin, trashMemo } from
 
 export const dynamic = "force-dynamic";
 
-export default async function MemoDetailPage({ params }: { params: { id: string } }) {
+export default async function MemoDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { folder?: string };
+}) {
+  // スマホで「戻る」先を、見ていた一覧に合わせる
+  const backHref = `/memos?folder=${searchParams.folder ?? "all"}`;
+
   const memo = await prisma.memo
     .findUnique({
       where: { id: params.id },
@@ -49,14 +58,14 @@ export default async function MemoDetailPage({ params }: { params: { id: string 
   if (memo.deletedAt) {
     return (
       <main>
-        <BackLink />
+        <BackLink href={backHref} />
         <h1 className="large-title mt-2">{memoTitle(memo.body)}</h1>
         <div className="card mt-4 p-4">
           <p className="text-sm text-muted">
             このメモはゴミ箱に入っています（{formatJstDateTime(memo.deletedAt)}）。
             編集するには、ゴミ箱から元に戻してください。
           </p>
-          <Link href="/memos/trash" className="btn-primary mt-3">
+          <Link href="/memos?folder=trash" className="btn-primary mt-3">
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             ゴミ箱を開く
           </Link>
@@ -73,7 +82,7 @@ export default async function MemoDetailPage({ params }: { params: { id: string 
        * タイトルは本文の1行目なので、ここに見出しを置くと同じ文字が二重に出てしまう。
        */}
       <div className="flex items-center justify-between gap-2">
-        <BackLink />
+        <BackLink href={backHref} />
         <div className="flex items-center gap-2">
           <form action={toggleMemoPin}>
             <input type="hidden" name="id" value={memo.id} />
@@ -188,12 +197,15 @@ export default async function MemoDetailPage({ params }: { params: { id: string 
   );
 }
 
-/** 一覧へ戻るリンク */
-function BackLink() {
+/**
+ * 一覧へ戻るリンク。
+ * PCは左に一覧が見えているので出さない（スマホの画面遷移のためだけに使う）。
+ */
+function BackLink({ href }: { href: string }) {
   return (
     <Link
-      href="/memos"
-      className="inline-flex items-center gap-1 text-sm font-bold text-muted hover:text-ink"
+      href={href}
+      className="inline-flex items-center gap-1 text-sm font-bold text-muted hover:text-ink lg:hidden"
     >
       <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       メモ一覧
