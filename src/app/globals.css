@@ -159,6 +159,20 @@
   .report blockquote {
     @apply my-2 border-l-4 border-accent pl-3 text-muted;
   }
+  /*
+   * チェックリスト（メモのタスクリスト）。
+   * remark-gfmが付けるクラス名に合わせている。中黒を消してチェックボックスを行頭に置く。
+   */
+  .report ul.contains-task-list {
+    @apply list-none pl-0;
+  }
+  .report li.task-list-item {
+    @apply flex items-start gap-0.5;
+  }
+  /* 本文に差し込んだ画像は幅いっぱいまでで、はみ出させない */
+  .report img {
+    @apply my-2 max-w-full rounded-lg border-2 border-line;
+  }
   .report code {
     @apply rounded bg-fill px-1 py-0.5 text-[12px];
   }

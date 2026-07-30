@@ -153,6 +153,37 @@ export const GOOGLE_ACCOUNT_COLORS = [
 /** ニュース一覧（/news）で1ページに表示する件数 */
 export const NEWS_LIST_COUNT = 30;
 
+/**
+ * メモ本文の最大文字数（作成・自動保存・編集すべて共通）
+ *
+ * ここを単一の上限にすること。作成と更新で値がずれると、
+ * 長いメモを編集した瞬間に後半が黙って消える（過去に実際に起きた不具合）。
+ */
+export const MEMO_BODY_MAX_LENGTH = 10_000;
+
+/** 1つのメモに付けられる添付ファイルの数 */
+export const MEMO_ATTACHMENT_MAX = 10;
+
+/** ゴミ箱のメモを完全削除するまでの日数（iPhoneメモ帳と同じ30日） */
+export const TRASH_RETENTION_DAYS = 30;
+
+/** メモ一覧のプレビューに出す本文の文字数（1行目=タイトルを除いた部分） */
+export const MEMO_PREVIEW_LENGTH = 90;
+
+/** メモ一覧の並び替え（単一定義元。URLの ?sort= の値になる） */
+export const MEMO_SORTS = [
+  { value: "updated", label: "編集日順" },
+  { value: "created", label: "作成日順" },
+  { value: "title", label: "タイトル順" },
+] as const;
+
+export type MemoSort = (typeof MEMO_SORTS)[number]["value"];
+
+/** ?sort= の文字列を安全な並び替えキーに直す（不正値は編集日順） */
+export function toMemoSort(value: string | undefined): MemoSort {
+  return MEMO_SORTS.some((s) => s.value === value) ? (value as MemoSort) : "updated";
+}
+
 /** 会議の処理状態 → 表示ラベル・チップ配色（単一定義元） */
 export const MEETING_STATUS: Record<string, { label: string; bg: string; fg: string }> = {
   recorded: { label: "未処理", bg: "#EFE7D8", fg: "#8A7A70" },

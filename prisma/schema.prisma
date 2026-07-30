@@ -112,20 +112,35 @@ model Task {
   @@index([projectId, status])
 }
 
-/// メモ。kind で「突発メモ」と「よく使うメモ」を分ける。
+/// メモ（iPhoneメモ帳方式）。
+/// 種類の区別はなく「1種類のメモ＋ピン留め」。タイトルは本文1行目を自動で使う。
 model Memo {
-  id          String           @id @default(cuid())
-  kind        String // "quick"（突発メモ） / "pinned"（よく使うメモ）
-  title       String? // よく使うメモの見出し（任意）
-  body        String
-  sortOrder   Int              @default(0) // よく使うメモの並び順（小さいほど上）
+  id   String @id @default(cuid())
+  body String // 本文（Markdown）。1行目がタイトルとして表示される
+
+  /// ピン留め（一覧の先頭に固定）。旧「よく使うメモ」はこれに移行済み
+  pinned Boolean @default(false)
+
+  /// ゴミ箱に入れた日時（null=通常表示）。TRASH_RETENTION_DAYS 経過後に完全削除する
+  deletedAt DateTime?
+
   folderId    String? // 所属フォルダ（null=未分類）
   folder      MemoFolder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
   attachments MemoAttachment[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  @@index([kind, sortOrder])
+  // ---- 以下3列は旧仕様の名残。統合後のコードは参照しない（次回のスキーマ整理で削除する）----
+  // ※ 今回は列を消さない = db push を非破壊に保つため。消すのは移行が安定してから。
+  /// 旧「quick(突発) / pinned(よく使う)」の区別。pinned列へ移行済み
+  kind String @default("quick")
+  /// 旧「よく使うメモ」の見出し。本文1行目へ移行済み
+  title String?
+  /// 旧「よく使うメモ」の並び順。並びは pinned + updatedAt に統合済み
+  sortOrder Int @default(0)
+
+  // 一覧の主クエリ「ゴミ箱以外を、ピン留め優先・更新日時の新しい順で取得」に効く
+  @@index([deletedAt, pinned, updatedAt])
   @@index([folderId])
 }
 
