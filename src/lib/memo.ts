@@ -92,6 +92,38 @@ export function toggleTaskAtIndex(body: string, index: number): string {
 }
 
 /**
+ * 指定行（1始まり）の先頭が本文の何文字目かを返す。
+ *
+ * 整形表示のある行をタップしたとき、編集に切り替えてその行にカーソルを置くために使う。
+ * 範囲外の行番号は本文の末尾を返す（タップ位置が取れなくても編集は始められるようにする）。
+ */
+export function lineStartOffset(body: string, line: number): number {
+  const lines = body.split("\n");
+  if (line <= 1) return 0;
+  if (line > lines.length) return body.length;
+
+  let offset = 0;
+  for (let i = 0; i < line - 1; i++) offset += lines[i].length + 1; // +1 は改行ぶん
+  return offset;
+}
+
+/**
+ * 指定行（1始まり）の末尾が本文の何文字目かを返す。
+ *
+ * 整形表示をタップして編集に入るとき、そのかたまりの終わりにカーソルを置くために使う。
+ * 先頭に置くと「続きを書きたいのに文頭へ飛ぶ」ので、末尾のほうが使いやすい。
+ */
+export function lineEndOffset(body: string, line: number): number {
+  const lines = body.split("\n");
+  if (line < 1) return 0;
+  if (line >= lines.length) return body.length;
+
+  let offset = 0;
+  for (let i = 0; i < line; i++) offset += lines[i].length + 1; // +1 は改行ぶん
+  return offset - 1; // 改行の手前（＝その行の末尾）
+}
+
+/**
  * 箇条書き・番号付き・チェックリストの行から「次の行に引き継ぐ接頭辞」を求める。
  *
  * Enterキーでリストを自動継続するために使う（iPhoneメモ帳と同じ挙動）。

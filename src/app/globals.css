@@ -20,6 +20,11 @@
   --accent-soft: #f4d5cd; /* 赤の淡色背景（テラコッタパステル） */
   --fill: rgba(104, 76, 64, 0.08); /* 入力欄などの塗り */
   --hard-shadow: rgba(82, 55, 39, 0.18); /* ずらし影の色 */
+
+  /* スワイプ操作で顔を出すボタンの地色（iPhone風。取り消せない操作ほど強い色） */
+  --swipe-danger: #a84a36; /* 削除・完全削除 */
+  --swipe-pin: #df923f; /* ピン留め */
+  --swipe-calm: #709bad; /* 複製・元に戻す */
 }
 
 @layer base {
@@ -114,6 +119,40 @@
     @apply border-line bg-[rgba(248,243,232,0.92)] backdrop-blur-md;
   }
 
+  /*
+   * スワイプ操作の行（メモ一覧・ゴミ箱）
+   * 行の下に操作ボタンを敷き、上に載った中身を指の動きに合わせて横へずらす。
+   * touch-action: pan-y で「縦スクロールはブラウザに任せ、横は自分で扱う」と宣言する
+   * （これが無いと一覧を縦にスクロールできなくなる）。
+   */
+  .swipe-row {
+    @apply relative overflow-hidden;
+    touch-action: pan-y;
+  }
+  .swipe-content {
+    @apply relative bg-card;
+  }
+  .swipe-action {
+    @apply flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-bold text-white;
+  }
+  .swipe-danger {
+    background: var(--swipe-danger);
+  }
+  .swipe-pin {
+    background: var(--swipe-pin);
+  }
+  .swipe-calm {
+    background: var(--swipe-calm);
+  }
+
+  /* 長押しメニュー（iPhoneのコンテキストメニュー風） */
+  .context-menu {
+    @apply card fixed z-50 w-52 overflow-hidden p-0;
+  }
+  .context-menu button {
+    @apply flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left text-[15px] font-bold text-ink transition-colors duration-100 hover:bg-bg active:opacity-60;
+  }
+
   /* 会議レポートなどのMarkdown整形表示（見出し・表・箇条書き） */
   .report {
     @apply text-sm leading-relaxed text-ink;
@@ -172,6 +211,26 @@
   /* 本文に差し込んだ画像は幅いっぱいまでで、はみ出させない */
   .report img {
     @apply my-2 max-w-full rounded-lg border-2 border-line;
+  }
+  /*
+   * メモ本文の整形表示。
+   * iPhoneメモ帳と同じく「1行目がタイトル」なので、最初のブロックだけ大きく太く見せる。
+   * 画面上部に別のタイトル見出しは置かない（同じ文字が二重に出るため）。
+   */
+  .memo-view > :first-child {
+    @apply mb-2 mt-0;
+  }
+  /*
+   * ::first-line を使うのは、改行が <br> になって「1行目」が独立した要素にならないため。
+   * 要素そのものを大きくすると2行目以降まで太くなってしまう。
+   */
+  .memo-view > :first-child::first-line {
+    @apply text-[19px] tracking-tight;
+    font-weight: 900;
+  }
+  /* リンクは本文中で分かるように下線をつける */
+  .report a {
+    @apply text-accent underline;
   }
   .report code {
     @apply rounded bg-fill px-1 py-0.5 text-[12px];

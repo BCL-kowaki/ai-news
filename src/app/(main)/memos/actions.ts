@@ -48,16 +48,20 @@ export type NewAttachment = {
  * 空のメモを作ってすぐ編集画面へ送る（「新規メモ」ボタン）。
  * iPhoneメモ帳と同じく、先に器を作ってから書き始める方式。
  */
-export async function createBlankMemo(formData: FormData): Promise<void> {
+export async function createBlankMemoIn(folderIdRaw: string): Promise<{ id: string }> {
   await assertLoggedIn();
 
   // 一覧でフォルダを絞っていたら、そのフォルダの中に作る
-  const folderIdRaw = String(formData.get("folderId") ?? "");
   const folderId = await resolveFolderId(folderIdRaw);
-
   const memo = await prisma.memo.create({ data: { body: "", folderId } });
   revalidateMemoViews();
-  redirect(`/memos/${memo.id}`);
+  return { id: memo.id };
+}
+
+/** 新規メモ（フォーム用。作成後そのまま編集画面へ送る） */
+export async function createBlankMemo(formData: FormData): Promise<void> {
+  const { id } = await createBlankMemoIn(String(formData.get("folderId") ?? ""));
+  redirect(`/memos/${id}`);
 }
 
 /**
@@ -89,11 +93,16 @@ export async function saveMemoBody(
   }
 }
 
-/** ピン留めの切り替え */
-export async function toggleMemoPin(formData: FormData): Promise<void> {
-  await assertLoggedIn();
+/*
+ * 以下の操作は「ID指定の関数」と「フォーム用のラッパー」の2形で用意している。
+ * - ID指定 … 一覧のスワイプ・長押しメニュー（クライアント側）から直接呼ぶ
+ * - フォーム用 … 詳細画面の <form action={...}> から呼ぶ
+ * 中身は必ずID指定側に置き、ラッパーは値を取り出すだけにする（処理を二重に書かない）。
+ */
 
-  const id = String(formData.get("id") ?? "");
+/** ピン留めの切り替え */
+export async function toggleMemoPinById(id: string): Promise<void> {
+  await assertLoggedIn();
   if (!id) return;
 
   const memo = await prisma.memo.findUnique({ where: { id }, select: { pinned: true } });
@@ -104,56 +113,88 @@ export async function toggleMemoPin(formData: FormData): Promise<void> {
   revalidatePath(`/memos/${id}`);
 }
 
-/** メモを別フォルダへ移動（空文字=未分類） */
-export async function moveMemoToFolder(formData: FormData): Promise<void> {
-  await assertLoggedIn();
+export async function toggleMemoPin(formData: FormData): Promise<void> {
+  await toggleMemoPinById(String(formData.get("id") ?? ""));
+}
 
-  const memoId = String(formData.get("memoId") ?? "");
+/** メモを別フォルダへ移動（空文字・"none"=未分類） */
+export async function moveMemoToFolderById(memoId: string, folderIdRaw: string): Promise<void> {
+  await assertLoggedIn();
   if (!memoId) return;
 
-  const folderId = await resolveFolderId(String(formData.get("folderId") ?? ""));
-
+  const folderId = await resolveFolderId(folderIdRaw);
   await prisma.memo.update({ where: { id: memoId }, data: { folderId } }).catch(() => {});
   revalidateMemoViews();
   revalidatePath(`/memos/${memoId}`);
 }
 
-/**
- * ゴミ箱へ入れる（実体はまだ消さない）。
- * 編集画面から呼ばれたときは一覧へ戻す。
- */
-export async function trashMemo(formData: FormData): Promise<void> {
-  await assertLoggedIn();
+export async function moveMemoToFolder(formData: FormData): Promise<void> {
+  await moveMemoToFolderById(
+    String(formData.get("memoId") ?? ""),
+    String(formData.get("folderId") ?? ""),
+  );
+}
 
-  const id = String(formData.get("id") ?? "");
+/** ゴミ箱へ入れる（実体はまだ消さない） */
+export async function trashMemoById(id: string): Promise<void> {
+  await assertLoggedIn();
   if (!id) return;
 
   await prisma.memo.update({ where: { id }, data: { deletedAt: new Date() } }).catch(() => {});
   revalidateMemoViews();
+}
 
+/** ゴミ箱へ入れる（詳細画面用。消したあとは一覧へ戻す） */
+export async function trashMemo(formData: FormData): Promise<void> {
+  await trashMemoById(String(formData.get("id") ?? ""));
   if (String(formData.get("redirect") ?? "") === "list") redirect("/memos");
 }
 
 /** ゴミ箱から戻す */
-export async function restoreMemo(formData: FormData): Promise<void> {
+export async function restoreMemoById(id: string): Promise<void> {
   await assertLoggedIn();
-
-  const id = String(formData.get("id") ?? "");
   if (!id) return;
 
   await prisma.memo.update({ where: { id }, data: { deletedAt: null } }).catch(() => {});
   revalidateMemoViews();
 }
 
-/** 完全削除（添付の実体もBlobから消す。ここだけが後戻りできない操作） */
-export async function deleteMemoForever(formData: FormData): Promise<void> {
-  await assertLoggedIn();
+export async function restoreMemo(formData: FormData): Promise<void> {
+  await restoreMemoById(String(formData.get("id") ?? ""));
+}
 
-  const id = String(formData.get("id") ?? "");
+/** 完全削除（添付の実体もBlobから消す。ここだけが後戻りできない操作） */
+export async function deleteMemoForeverById(id: string): Promise<void> {
+  await assertLoggedIn();
   if (!id) return;
 
   await purgeMemos([id]);
   revalidateMemoViews();
+}
+
+export async function deleteMemoForever(formData: FormData): Promise<void> {
+  await deleteMemoForeverById(String(formData.get("id") ?? ""));
+}
+
+/**
+ * メモを複製する（iPhoneメモ帳の「複製」）。
+ * 本文とフォルダだけを引き継ぐ。添付は実体の複製が必要になるため引き継がない。
+ */
+export async function duplicateMemoById(id: string): Promise<{ ok: boolean; id?: string }> {
+  await assertLoggedIn();
+  if (!id) return { ok: false };
+
+  const source = await prisma.memo.findUnique({
+    where: { id },
+    select: { body: true, folderId: true },
+  });
+  if (!source) return { ok: false };
+
+  const copy = await prisma.memo.create({
+    data: { body: source.body, folderId: source.folderId },
+  });
+  revalidateMemoViews();
+  return { ok: true, id: copy.id };
 }
 
 /** ゴミ箱を空にする（中身すべてを完全削除） */

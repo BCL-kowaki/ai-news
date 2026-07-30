@@ -67,6 +67,41 @@ export function formatJstDateTime(date: Date): string {
   }).format(date);
 }
 
+/**
+ * メモ一覧の日時表示（iPhoneメモ帳と同じ考え方・JST基準）。
+ *
+ * - 今日  … "12:44"（時刻だけ）
+ * - 昨日  … "昨日"
+ * - 直近1週間 … "火曜日"
+ * - それより前 … "2026/7/12"
+ *
+ * 「いつ触ったか」を一目で掴めるようにするため、古いものほど粗い表示にする。
+ */
+export function formatMemoTimestamp(date: Date, now: Date = new Date()): string {
+  const key = getJstDateKey(date);
+  const todayKey = getJstDateKey(now);
+  if (key === todayKey) return formatJstTime(date);
+
+  const yesterdayKey = getJstDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  if (key === yesterdayKey) return "昨日";
+
+  // JSTの日付境界どうしで引き算し、「何日前か」で判定する（時刻差だと日をまたぐ判定がぶれる）
+  const daysAgo = Math.round(
+    (getJstStartOfToday(now).getTime() - getJstStartOfToday(date).getTime()) /
+      (24 * 60 * 60 * 1000),
+  );
+  if (daysAgo >= 2 && daysAgo <= 6) {
+    return new Intl.DateTimeFormat("ja-JP", { timeZone: TIMEZONE, weekday: "long" }).format(date);
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
 /** Dateを日本時間の年月日時分に分解する。 */
 function getJstParts(date: Date) {
   const formatter = new Intl.DateTimeFormat("en-CA", {

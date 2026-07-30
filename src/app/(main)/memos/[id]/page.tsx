@@ -68,12 +68,13 @@ export default async function MemoDetailPage({ params }: { params: { id: string 
 
   return (
     <main>
-      <BackLink />
-
-      {/* タイトル（本文1行目）と操作 */}
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
-        <h1 className="large-title flex-1 break-words">{memoTitle(memo.body)}</h1>
-        <div className="flex flex-wrap items-center gap-2">
+      {/*
+       * ヘッダーはiPhoneメモ帳に合わせ、戻る＋操作アイコンだけにしている。
+       * タイトルは本文の1行目なので、ここに見出しを置くと同じ文字が二重に出てしまう。
+       */}
+      <div className="flex items-center justify-between gap-2">
+        <BackLink />
+        <div className="flex items-center gap-2">
           <form action={toggleMemoPin}>
             <input type="hidden" name="id" value={memo.id} />
             <SubmitButton variant="ghost" pendingLabel="…">
@@ -102,11 +103,13 @@ export default async function MemoDetailPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      <p className="mt-1 text-xs text-faint">
-        作成 {formatJstDateTime(memo.createdAt)} ／ 更新 {formatJstDateTime(memo.updatedAt)}
+      {/* 日時は本文の上に小さく（iPhoneメモ帳と同じ位置） */}
+      <p className="mt-3 text-center text-xs text-faint">
+        {formatJstDateTime(memo.updatedAt)}
+        {memo.folder?.name && ` ・ ${memo.folder.name}`}
       </p>
 
-      {/* 本文（自動保存） */}
+      {/* 本文（整形表示＋タップで編集・自動保存） */}
       <MemoEditor memoId={memo.id} initialBody={memo.body} />
 
       {/* フォルダ */}

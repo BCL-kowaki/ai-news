@@ -170,6 +170,25 @@ export const TRASH_RETENTION_DAYS = 30;
 /** メモ一覧のプレビューに出す本文の文字数（1行目=タイトルを除いた部分） */
 export const MEMO_PREVIEW_LENGTH = 90;
 
+/**
+ * メモ一覧のスワイプ操作（iPhoneメモ帳と同じ操作感の調整値）
+ *
+ * - ACTION_WIDTH … スワイプで顔を出す操作ボタン1つぶんの幅(px)
+ * - START_PX     … 横スワイプと判定し始める移動量(px)。小さすぎると縦スクロールを奪う
+ * - COMMIT_EXTRA_PX … ボタンを出し切った位置から、さらにこれだけ引っ張ると指を離した瞬間に実行する
+ *
+ * ※ 実行の判定に「画面幅の◯割」を使ってはいけない。
+ *   幅が 0 と報告される場面（描画前・非表示など）があり、その場合に
+ *   しきい値も 0 になって「ほんの少し滑らせただけで削除が走る」事故になる。
+ *   ボタンの幅を基準にした固定距離なら、幅が取れなくても安全側で動く。
+ */
+export const MEMO_SWIPE_ACTION_WIDTH = 88;
+export const MEMO_SWIPE_START_PX = 12;
+export const MEMO_SWIPE_COMMIT_EXTRA_PX = 66;
+
+/** 長押しでメニューを出すまでの時間(ミリ秒) */
+export const MEMO_LONG_PRESS_MS = 500;
+
 /** メモ一覧の並び替え（単一定義元。URLの ?sort= の値になる） */
 export const MEMO_SORTS = [
   { value: "updated", label: "編集日順" },

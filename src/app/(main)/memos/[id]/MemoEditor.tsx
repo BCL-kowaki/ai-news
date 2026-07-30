@@ -3,35 +3,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+// メモは「書いた通りの改行」で見えないと使いものにならない。
+// Markdownの既定では1回の改行が無視されて前の行とつながってしまうため、改行をそのまま反映させる。
+import remarkBreaks from "remark-breaks";
 import {
   Bold,
   Check,
   CheckSquare,
-  Eye,
   Heading,
   Image as ImageIcon,
   List,
   ListOrdered,
   Mic,
   Paperclip,
-  Pencil,
   Quote,
   Square,
 } from "lucide-react";
 import { MEMO_BODY_MAX_LENGTH } from "@/lib/config";
-import { listContinuation, toggleTaskAtIndex } from "@/lib/memo";
+import { lineEndOffset, listContinuation, toggleTaskAtIndex } from "@/lib/memo";
 import { addMemoAttachments, saveMemoBody, type NewAttachment } from "../actions";
 
 /**
- * メモの編集画面（iPhoneメモ帳方式）
+ * メモの本文（iPhoneメモ帳方式）
  *
- * - 開いたらそのまま書ける。保存ボタンは無く、入力が止まって少し経つと自動保存する
- * - 1行目がタイトルになる（表示側で本文から取り出すので、タイトル用の入力は持たない）
- * - Markdownで書き、プレビューに切り替えると見出し・チェックリスト・画像が整形表示される
- * - プレビューのチェックボックスはタップで切り替わり、本文のMarkdownが書き換わる
- * - 録音は文字起こしして本文に挿入、画像は本文の途中に差し込める
+ * 「編集モード / プレビューモード」を切り替える作りをやめ、**普段は整形された状態で表示**し、
+ * 文字をタップしたらその行から書き始められるようにしている（iPhoneメモ帳と同じ動き）。
+ * - チェックリストは整形表示のままタップで完了にできる（編集に入らない）
+ * - 保存ボタンは無い。入力が止まって少し経つと自動保存し、画面を離れるときにも保存する
+ * - 1行目がタイトル。表示側で本文から取り出すので、タイトル専用の入力は持たない
  */
 
 /** 入力が止まってから保存するまでの待ち時間（打つたびに保存しないための間） */
@@ -47,23 +48,18 @@ type UploadedAttachment = {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-export function MemoEditor({
-  memoId,
-  initialBody,
-}: {
-  memoId: string;
-  initialBody: string;
-}) {
+export function MemoEditor({ memoId, initialBody }: { memoId: string; initialBody: string }) {
   const router = useRouter();
   const [body, setBody] = useState(initialBody);
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  /** 空のメモ（新規作成直後）はそのまま書き始められるように編集状態で開く */
+  const [editing, setEditing] = useState(initialBody.trim() === "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [busy, setBusy] = useState<"idle" | "recording" | "transcribing" | "uploading">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  /** プレビューの入れ物。チェックボックスが上から何番目かを数えるのに使う */
-  const previewRef = useRef<HTMLDivElement | null>(null);
+  /** 整形表示の入れ物。チェックボックスが上から何番目かを数えるのに使う */
+  const viewRef = useRef<HTMLDivElement | null>(null);
   /**
    * 直前のカーソル位置（選択範囲）。
    * ツールバーのボタンを押すとブラウザが入力欄の選択範囲を 0 に戻してしまうことがあり、
@@ -71,10 +67,13 @@ export function MemoEditor({
    * 入力欄側で位置を控えておき、ボタン処理はこの控えを使う。
    */
   const selectionRef = useRef({ start: 0, end: 0 });
+  /** 編集に切り替えた直後に置きたいカーソル位置（タップした行の先頭） */
+  const pendingCaretRef = useRef<number | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 最後に保存が完了した本文。これと違うときだけ保存する（無駄な通信を防ぐ） */
   const savedBodyRef = useRef(initialBody);
-  /** 保存対象の最新の本文（アンマウント時の駆け込み保存で使う） */
+  /** 保存対象の最新の本文（画面を離れるときの駆け込み保存で使う） */
   const bodyRef = useRef(initialBody);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -145,6 +144,139 @@ export function MemoEditor({
   useEffect(() => {
     return () => streamRef.current?.getTracks().forEach((t) => t.stop());
   }, []);
+
+  // 編集に切り替わったら、タップした行にカーソルを置いて入力を始められるようにする
+  useEffect(() => {
+    if (!editing) return;
+    const el = textareaRef.current;
+    if (!el) return;
+
+    const caret = pendingCaretRef.current ?? body.length;
+    pendingCaretRef.current = null;
+    el.focus();
+    el.setSelectionRange(caret, caret);
+    selectionRef.current = { start: caret, end: caret };
+    // body は初回の値だけ使えばよく、依存に入れると入力ごとにカーソルが飛ぶ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  /** 整形表示から編集へ切り替える（caret=本文の何文字目にカーソルを置くか） */
+  function enterEditing(caret: number) {
+    pendingCaretRef.current = caret;
+    setEditing(true);
+  }
+
+  /** 書き終わり（整形表示に戻す） */
+  function finishEditing() {
+    setEditing(false);
+    void save();
+  }
+
+  // -------------------------------------------------------------------------
+  // 整形表示
+  // -------------------------------------------------------------------------
+
+  /**
+   * 整形表示のどこかを押したとき。
+   * リンクとチェックボックスはそのまま働かせ、それ以外は押した行から編集を始める。
+   * 行の特定には、各ブロックに埋めた data-line（元のMarkdownの行番号）を使う。
+   */
+  function handleViewPointerUp(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement;
+    if (target.closest("a, input, button")) return;
+
+    // 押したかたまりの「終わりの行」を使う（先頭だと続きを書きたいのに文頭へ飛ぶ）
+    const block = target.closest("[data-line-end]");
+    const line = block ? Number(block.getAttribute("data-line-end")) : NaN;
+    enterEditing(Number.isFinite(line) ? lineEndOffset(body, line) : body.length);
+  }
+
+  /** 整形表示の各ブロックに元の行番号を埋める（タップした行を特定するため） */
+  const markdownComponents: Components = {
+    p: ({ node, children, ...props }) => (
+      <p
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </p>
+    ),
+    li: ({ node, children, ...props }) => (
+      <li
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </li>
+    ),
+    h1: ({ node, children, ...props }) => (
+      <h1
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </h1>
+    ),
+    h2: ({ node, children, ...props }) => (
+      <h2
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </h2>
+    ),
+    h3: ({ node, children, ...props }) => (
+      <h3
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </h3>
+    ),
+    blockquote: ({ node, children, ...props }) => (
+      <blockquote
+        data-line={node?.position?.start.line}
+        data-line-end={node?.position?.end.line}
+        {...props}
+      >
+        {children}
+      </blockquote>
+    ),
+    // リンクは別タブで開く（本文のURLを踏んでもメモから離れないように）
+    a: ({ children, ...props }) => (
+      <a {...props} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    /*
+     * チェックボックスはタップで本文のMarkdownを書き換える（編集に入らずその場で完了にできる）。
+     * remark-gfmは既定で disabled を付けるので、それを外して操作できるようにする。
+     * どのチェックリストかは、表示上のチェックボックスの並び順で判定する
+     * （描画途中でカウンタを進める方式は再描画で崩れるため使わない）。
+     */
+    input: ({ checked, type, ...props }) => {
+      if (type !== "checkbox") return <input type={type} {...props} />;
+      return (
+        <input
+          type="checkbox"
+          checked={Boolean(checked)}
+          onChange={(e) => {
+            const boxes = Array.from(
+              viewRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') ?? [],
+            );
+            const index = boxes.indexOf(e.currentTarget);
+            if (index >= 0) updateBody(toggleTaskAtIndex(body, index));
+          }}
+          className="mt-0.5 mr-1.5 h-5 w-5 shrink-0 cursor-pointer accent-[color:var(--accent)]"
+        />
+      );
+    },
+  };
 
   // -------------------------------------------------------------------------
   // Markdownツールバー
@@ -246,12 +378,18 @@ export function MemoEditor({
 
     e.preventDefault();
     if (continuation === "") {
-      // 中身が空のリスト項目でEnter → 記号を消してリストを終了する
-      const next = `${body.slice(0, lineStart)}${body.slice(start)}`;
+      /*
+       * 中身が空のリスト項目でEnter → 記号を消してリストを終了する。
+       * このとき空行を1つ挟むのが重要。挟まないと、次に書いた行がMarkdownの決まりで
+       * 直前のリスト項目の続きとして扱われ、箇条書きの中に飲み込まれてしまう。
+       */
+      const next = `${body.slice(0, lineStart)}\n${body.slice(start)}`;
+      const caret = lineStart + 1;
       updateBody(next);
+      selectionRef.current = { start: caret, end: caret };
       requestAnimationFrame(() => {
         el.focus();
-        el.setSelectionRange(lineStart, lineStart);
+        el.setSelectionRange(caret, caret);
       });
       return;
     }
@@ -339,7 +477,9 @@ export function MemoEditor({
         error?: string;
       };
       if (transcribeRes.ok && json.text) {
-        insertAtCursor(body && !body.endsWith("\n") ? `\n${json.text}` : json.text);
+        // 文字起こしは本文の末尾に足す（録音中はカーソル位置が定まらないため）
+        const separator = body && !body.endsWith("\n") ? "\n" : "";
+        updateBody(`${body}${separator}${json.text}`);
       } else {
         setError(json.error ?? "文字起こしに失敗しました（音声は添付済み）");
       }
@@ -370,8 +510,7 @@ export function MemoEditor({
         );
         if (!attachment) break;
         if (inline && attachment.mime.startsWith("image/")) {
-          const md = `\n![${attachment.name}](/api/memos/file/${attachment.id})\n`;
-          insertAtCursor(md);
+          insertAtCursor(`\n![${attachment.name}](/api/memos/file/${attachment.id})\n`);
         } else {
           router.refresh(); // 下の添付欄に反映する
         }
@@ -393,59 +532,34 @@ export function MemoEditor({
 
   return (
     <div className="card mt-3 p-4">
-      {/* 編集 / プレビュー の切り替えと保存状態 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode("edit")}
-            className={mode === "edit" ? "btn-primary !min-h-8 !px-3 !py-1 !text-[13px]" : "btn-ghost"}
-            aria-pressed={mode === "edit"}
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-            編集
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("preview")}
-            className={
-              mode === "preview" ? "btn-primary !min-h-8 !px-3 !py-1 !text-[13px]" : "btn-ghost"
-            }
-            aria-pressed={mode === "preview"}
-          >
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            プレビュー
-          </button>
-        </div>
         <SaveIndicator state={saveState} />
+        {editing && (
+          <button
+            type="button"
+            onClick={finishEditing}
+            className="btn-primary !min-h-8 !px-4 !py-1 !text-[13px]"
+          >
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            完了
+          </button>
+        )}
       </div>
 
-      {mode === "edit" ? (
+      {editing ? (
         <>
           {/* Markdownツールバー */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <ToolButton
-              label="見出し"
-              onClick={() => toggleLinePrefix("## ")}
-              disabled={toolbarDisabled}
-            >
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <ToolButton label="見出し" onClick={() => toggleLinePrefix("## ")} disabled={toolbarDisabled}>
               <Heading className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
             <ToolButton label="太字" onClick={() => wrapSelection("**")} disabled={toolbarDisabled}>
               <Bold className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
-            <ToolButton
-              label="箇条書き"
-              onClick={() => toggleLinePrefix("- ")}
-              disabled={toolbarDisabled}
-            >
+            <ToolButton label="箇条書き" onClick={() => toggleLinePrefix("- ")} disabled={toolbarDisabled}>
               <List className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
-            <ToolButton
-              label="番号付き"
-              onClick={() => toggleLinePrefix("1. ")}
-              disabled={toolbarDisabled}
-            >
+            <ToolButton label="番号付き" onClick={() => toggleLinePrefix("1. ")} disabled={toolbarDisabled}>
               <ListOrdered className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
             <ToolButton
@@ -455,11 +569,7 @@ export function MemoEditor({
             >
               <CheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
-            <ToolButton
-              label="引用"
-              onClick={() => toggleLinePrefix("> ")}
-              disabled={toolbarDisabled}
-            >
+            <ToolButton label="引用" onClick={() => toggleLinePrefix("> ")} disabled={toolbarDisabled}>
               <Quote className="h-3.5 w-3.5" aria-hidden="true" />
             </ToolButton>
           </div>
@@ -480,7 +590,7 @@ export function MemoEditor({
             rows={16}
             maxLength={MEMO_BODY_MAX_LENGTH}
             placeholder="1行目がタイトルになります。そのまま書き始めてください…"
-            className="input mt-2 resize-y font-normal leading-relaxed"
+            className="input mt-2 resize-y leading-relaxed"
             aria-label="メモの内容"
           />
           <p className="mt-1 text-right text-xs text-faint">
@@ -488,42 +598,21 @@ export function MemoEditor({
           </p>
         </>
       ) : (
-        <div ref={previewRef} className="report mt-3 min-h-40">
+        <div
+          ref={viewRef}
+          onClick={handleViewPointerUp}
+          // 見た目は文章だが押すと編集に入るので、押せることが分かるようにしておく
+          className="report memo-view mt-2 min-h-40 cursor-text"
+        >
           {body.trim() ? (
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                /*
-                 * チェックボックスはタップで本文のMarkdownを書き換える。
-                 * remark-gfmは既定で disabled を付けるので、それを外して操作できるようにする。
-                 * どのチェックリストかは、プレビュー内のチェックボックスの並び順で判定する
-                 * （描画途中でカウンタを進める方式は再描画で崩れるため使わない）。
-                 */
-                input: ({ checked, type, ...props }) => {
-                  if (type !== "checkbox") return <input type={type} {...props} />;
-                  return (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(checked)}
-                      onChange={(e) => {
-                        const boxes = Array.from(
-                          previewRef.current?.querySelectorAll<HTMLInputElement>(
-                            'input[type="checkbox"]',
-                          ) ?? [],
-                        );
-                        const index = boxes.indexOf(e.currentTarget);
-                        if (index >= 0) updateBody(toggleTaskAtIndex(body, index));
-                      }}
-                      className="mt-0.5 mr-1.5 h-4 w-4 shrink-0 cursor-pointer accent-[color:var(--accent)]"
-                    />
-                  );
-                },
-              }}
+              remarkPlugins={[remarkGfm, remarkBreaks]}
+              components={markdownComponents}
             >
               {body}
             </ReactMarkdown>
           ) : (
-            <p className="text-sm text-faint">まだ何も書かれていません。</p>
+            <p className="text-sm text-faint">ここを押すと書き始められます。</p>
           )}
         </div>
       )}
@@ -549,22 +638,24 @@ export function MemoEditor({
           )}
         </button>
 
-        {/* 画像を本文の途中に差し込む */}
-        <label className={`btn-ghost ${toolbarDisabled ? "pointer-events-none opacity-40" : ""}`}>
-          <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          画像を挿入
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            className="sr-only"
-            disabled={toolbarDisabled}
-            onChange={(e) => {
-              void handleFiles(e.target.files, true);
-              e.target.value = "";
-            }}
-          />
-        </label>
+        {/* 画像を本文の途中に差し込む（編集中だけ。位置が決まらないため） */}
+        {editing && (
+          <label className={`btn-ghost ${toolbarDisabled ? "pointer-events-none opacity-40" : ""}`}>
+            <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            画像を挿入
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="sr-only"
+              disabled={toolbarDisabled}
+              onChange={(e) => {
+                void handleFiles(e.target.files, true);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
 
         {/* その他のファイルは添付欄へ */}
         <label className={`btn-ghost ${toolbarDisabled ? "pointer-events-none opacity-40" : ""}`}>
@@ -585,7 +676,7 @@ export function MemoEditor({
       </div>
 
       {busy === "transcribing" && (
-        <p className="mt-2 text-sm font-medium text-muted">文字起こし中…（本文に挿入されます）</p>
+        <p className="mt-2 text-sm font-medium text-muted">文字起こし中…（本文の最後に足します）</p>
       )}
       {busy === "uploading" && <p className="mt-2 text-sm font-medium text-muted">アップロード中…</p>}
       {error && <p className="mt-2 text-sm font-medium text-red-600">{error}</p>}
