@@ -58,6 +58,23 @@
     min-height: 2.75rem;
   }
 
+  /*
+   * iOSは「文字サイズが16px未満の入力欄」にフォーカスすると、勝手に画面を拡大する。
+   * 一度拡大されると全体がずれ、指で戻す手間がかかるため、
+   * スマホ幅では入力欄の文字を16pxより小さくしない（＝拡大の条件を作らない）。
+   *
+   * !important を付けているのは、Tailwindのユーティリティ（text-sm 等）が後から効いて
+   * 個別の画面でうっかり16pxを割り込むのを防ぐため。ここは「起きてはいけない」種類の指定。
+   * PC幅では詰めて表示したいので、この制限はかけない。
+   */
+  @media (max-width: 1023px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+
   /* 動きを減らす設定のユーザーにはアニメーションを止める */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -70,53 +87,51 @@
 }
 
 /*
- * メモ画面だけの装い（Macのメモ帳に合わせる）
+ * メモ画面だけの装い（3ペインのための「密度」の調整）
  *
- * アプリ全体はエディトリアル調（紙色・茶の太枠・ずらし影）だが、
- * メモは「Macのメモ帳そのままにしたい」という要望のため、この範囲だけ白基調にする。
- * やり方は**トークンの上書き**。色の定義元はここ1か所のままなので、
- * .card / .chip / .input などの共通パーツはそのままで見た目だけ切り替わる。
+ * Macのメモ帳と同じ3ペイン構成にしているが、**色はアプリ本来のエディトリアル調のまま**にする。
+ * ここで変えるのは色そのものではなく、3列に情報を詰めるための密度だけ：
+ *   - 区切り線を「2pxの太枠」から「1pxの細い罫線」へ（茶色は保ったまま薄める）
+ *   - カードのずらし影・角丸を外して、列の中に行が連なって見えるようにする
+ * 色の定義元は引き続きこの globals.css の1か所。
  */
 .notes-ui {
-  --bg: #ffffff;
-  --bg-deep: #f5f5f7;
-  --card: #ffffff;
-  --ink: #1d1d1f;
-  --muted: #6e6e73;
-  --faint: #8e8e93;
-  --line: #e3e3e3; /* 髪の毛のような細い区切り線 */
-  --accent: #c8912a; /* リンク・ピンの金色 */
-  --accent-strong: #a87717;
-  --accent-soft: #ffe79a; /* 選択中の行の黄色 */
-  --fill: rgba(0, 0, 0, 0.05);
-  --hard-shadow: transparent; /* ずらし影は使わない */
+  /* 罫線だけ、同じ茶色を薄めたものに差し替える（2px太枠のままでは3列が重すぎるため） */
+  --line: rgba(104, 76, 64, 0.18);
+  /* 入力欄などの塗りも少し軽く */
+  --fill: rgba(104, 76, 64, 0.06);
 }
 
 @layer components {
-  /* --- メモ画面用に共通パーツを平らにする（枠線を細く・影と角丸を無くす） --- */
+  /*
+   * --- メモ画面だけ、共通パーツの「厚み」を落とす ---
+   * 色（クリーム地・茶インク・レンガ赤）はそのまま。太枠とずらし影だけを外して、
+   * 3列に並べたときに窮屈にならないようにする。
+   */
   .notes-ui .card {
     @apply rounded-none border-0 shadow-none;
   }
   .notes-ui .chip {
-    @apply border border-line px-2 py-0 text-[11px] font-semibold;
+    @apply px-2 py-0 text-[11px];
   }
   .notes-ui .btn-ghost {
-    @apply min-h-8 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold;
+    @apply min-h-8 rounded-lg border px-2.5 py-1 text-[12px];
   }
   .notes-ui .btn-primary {
-    @apply min-h-8 rounded-md border-0 bg-[#f0b429] px-3 py-1 text-[12px] font-bold text-[#1d1d1f] shadow-none hover:bg-[#e0a41f];
+    @apply min-h-8 rounded-lg border px-3 py-1 text-[12px];
+    box-shadow: 2px 3px 0 var(--hard-shadow);
   }
   .notes-ui .input {
-    @apply rounded-lg border border-line bg-[var(--fill)] px-3 py-1.5 text-[13px];
+    @apply rounded-lg border px-3 py-1.5 text-[13px];
   }
   .notes-ui .report {
     @apply text-[14px] leading-[1.6];
   }
-  /* 罫線は行の内側から引く（Macのメモ帳の一覧と同じ見え方） */
+  /* 一覧の行の区切り（薄い茶の細罫） */
   .notes-list > * + * {
     border-top: 1px solid var(--line);
   }
-  /* 選択中のメモ（Macは黄色で示す） */
+  /* 選択中のメモ。アプリのアクセント（レンガ赤）の淡色で示す */
   .notes-selected {
     background: var(--accent-soft);
   }

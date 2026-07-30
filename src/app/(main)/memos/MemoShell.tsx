@@ -79,11 +79,11 @@ export function MemoShell({
   const paneScroll = "lg:h-[calc(100dvh-7.5rem)] lg:overflow-y-auto";
 
   return (
-    // notes-ui: この中だけ色トークンを白基調（Macのメモ帳）に差し替える
-    <div className="notes-ui -mx-4 -mt-5 bg-card sm:-mx-5 lg:grid lg:grid-cols-[196px_minmax(272px,340px)_1fr]">
+    // notes-ui: 色はアプリのまま。3列に詰めるため罫線と厚みだけを調整するスコープ
+    <div className="notes-ui -mx-4 -mt-5 border-y-2 border-line bg-card sm:-mx-5 lg:grid lg:grid-cols-[196px_minmax(272px,340px)_1fr]">
       {/* 左：フォルダ */}
       <aside
-        className={`${showingFolders ? "block" : "hidden"} bg-[#f7f7f7] px-4 pt-4 lg:block lg:px-2.5 ${paneScroll}`}
+        className={`${showingFolders ? "block" : "hidden"} bg-bg px-4 pt-4 lg:block lg:px-2.5 ${paneScroll}`}
       >
         <FolderPane folders={folders} counts={counts} selected={folder} />
       </aside>

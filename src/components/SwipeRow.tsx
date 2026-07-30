@@ -73,6 +73,8 @@ export function SwipeRow({
   const rowRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0 });
   const gestureRef = useRef<Gesture>("undecided");
+  /** いま押している指／マウスのID。押していない間は null（＝動かしても反応しない） */
+  const activePointerRef = useRef<number | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 直前のスワイプで操作を実行したか（実行直後のクリックを飲み込むため） */
   const justActedRef = useRef(false);
@@ -91,6 +93,14 @@ export function SwipeRow({
     setDrag(next);
   }
 
+  /** 操作をやめて元に戻す（押していない状態へ） */
+  function resetGesture() {
+    activePointerRef.current = null;
+    gestureRef.current = "undecided";
+    cancelLongPress();
+    setDragOffset(null);
+  }
+
   function cancelLongPress() {
     if (longPressRef.current) {
       clearTimeout(longPressRef.current);
@@ -102,6 +112,7 @@ export function SwipeRow({
     // マウスの右クリックや複数指は扱わない
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
+    activePointerRef.current = e.pointerId;
     startRef.current = { x: e.clientX, y: e.clientY };
     gestureRef.current = "undecided";
     justActedRef.current = false;
@@ -119,6 +130,19 @@ export function SwipeRow({
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    /*
+     * ガード節：押していないときの動きは無視する。
+     * pointermove は「指で触れている間」だけでなく **マウスがただ通り過ぎたときにも発火する**。
+     * これを見ていないと、PCでカーソルを重ねただけで行が横に滑ってしまう（実際に起きた）。
+     * - 押していない（activePointer が無い）
+     * - 押し始めたポインタと別のポインタ
+     * - マウスでボタンが離れている（枠の外で離した場合の取りこぼし対策）
+     */
+    if (activePointerRef.current === null || e.pointerId !== activePointerRef.current) return;
+    if (e.pointerType === "mouse" && e.buttons === 0) {
+      resetGesture();
+      return;
+    }
     if (gestureRef.current === "scrolling") return;
 
     const dx = e.clientX - startRef.current.x;
@@ -153,6 +177,9 @@ export function SwipeRow({
 
   function handlePointerUp() {
     cancelLongPress();
+    // 指／マウスを離したので、次に動かしても反応しないよう押下状態を解除する
+    activePointerRef.current = null;
+
     if (gestureRef.current !== "swiping") {
       gestureRef.current = "undecided";
       return;
